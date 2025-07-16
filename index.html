@@ -1,1515 +1,732 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
-import * as THREE from 'three'; // Importa a biblioteca Three.js (mantida, caso queira usar em outras seções)
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clínica Inteligente</title>
 
-// Global variables for Firebase config and app ID (provided by the Canvas environment)
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
 
-// Firebase instances
-let app;
-let db;
-let auth;
+    <!-- React e Babel (para traduzir JSX no navegador) -->
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-// Componente para a animação 3D (mantido, mas não usado na HeroSection atual)
-const ThreeDAnimation = () => {
-  const mountRef = useRef(null);
+    <!-- Three.js (para a animação 3D) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Font Awesome (para ícones) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
-  useEffect(() => {
-    const currentMount = mountRef.current;
-    if (!currentMount) return;
-
-    // 1. Configuração da Cena
-    const scene = new THREE.Scene();
-    // Definindo um fundo suave para a cena
-    scene.background = new THREE.Color(0xf0f8ff); // Cor de fundo azul claro/quase branco
-
-    // 2. Configuração da Câmera
-    const camera = new THREE.PerspectiveCamera(
-      75, // Campo de visão
-      currentMount.clientWidth / currentMount.clientHeight, // Proporção da tela
-      0.1, // Distância mínima de renderização
-      1000 // Distância máxima de renderização
-    );
-    camera.position.z = 5; // Posição da câmera no eixo Z
-
-    // 3. Configuração do Renderizador
-    const renderer = new THREE.WebGLRenderer({ antialias: true }); // antialias para suavizar bordas
-    renderer.setSize(currentMount.clientWidth, currentMount.clientHeight); // Define o tamanho do renderizador
-    currentMount.appendChild(renderer.domElement); // Adiciona o canvas ao DOM
-
-    // 4. Adicionar Luzes
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Luz ambiente suave
-    scene.add(ambientLight);
-
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // Luz direcional principal
-    directionalLight.position.set(0, 1, 1).normalize();
-    scene.add(directionalLight);
-
-    // 5. Criar Objetos 3D (representando tecnologia, conexão e cuidado)
-    // Esfera central (representando o paciente ou o centro da clínica)
-    const sphereGeometry = new THREE.SphereGeometry(1, 32, 32);
-    const sphereMaterial = new THREE.MeshPhongMaterial({ color: 0x87ceeb, shininess: 80 }); // Azul céu, com brilho
-    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    scene.add(sphere);
-
-    // Linhas abstratas (representando conexão e dados)
-    const lineMaterial = new THREE.LineBasicMaterial({ color: 0x4682b4, linewidth: 2 }); // Azul aço
-    const points = [];
-    for (let i = 0; i < 50; i++) {
-      points.push(new THREE.Vector3(
-        Math.random() * 10 - 5,
-        Math.random() * 10 - 5,
-        Math.random() * 10 - 5
-      ));
-    }
-    const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
-    const line = new THREE.Line(lineGeometry, lineMaterial);
-    scene.add(line);
-
-    // Pequenos cubos (representando módulos ou dados)
-    const cubeGeometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
-    const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x98fb98, shininess: 60 }); // Verde menta suave
-    const cubes = [];
-    for (let i = 0; i < 10; i++) {
-      const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-      cube.position.set(
-        Math.random() * 8 - 4,
-        Math.random() * 8 - 4,
-        Math.random() * 8 - 4
-      );
-      scene.add(cube);
-      cubes.push(cube);
-    }
-
-    // 6. Loop de Animação
-    const animate = () => {
-      requestAnimationFrame(animate);
-
-      // Rotação sutil dos objetos
-      sphere.rotation.x += 0.001;
-      sphere.rotation.y += 0.002;
-      line.rotation.y += 0.001;
-      line.rotation.x += 0.0005;
-
-      cubes.forEach(cube => {
-        cube.rotation.x += 0.005;
-        cube.rotation.y += 0.005;
-      });
-
-      renderer.render(scene, camera);
-    };
-    animate();
-
-    // 7. Responsividade
-    const handleResize = () => {
-      camera.aspect = currentMount.clientWidth / currentMount.clientHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(currentMount.clientWidth, currentMount.clientHeight);
-    };
-
-    window.addEventListener('resize', handleResize);
-
-    // Limpeza ao desmontar o componente
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      currentMount.removeChild(renderer.domElement);
-      renderer.dispose(); // Libera recursos do WebGL
-    };
-  }, []);
-
-  return <div ref={mountRef} className="absolute inset-0 w-full h-full"></div>;
-};
-
-
-// Componente para a seção de entrada com vídeo
-const HeroSection = ({ siteConfig }) => {
-  const [videoLoaded, setVideoLoaded] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false); // Novo estado para controlar se o vídeo está a tocar
-  const videoRef = useRef(null);
-
-  useEffect(() => {
-    const videoElement = videoRef.current;
-    if (videoElement && siteConfig.heroVideoUrl) {
-      const handleCanPlayThrough = () => {
-        setVideoLoaded(true);
-        videoElement.play().then(() => {
-          setIsPlaying(true); // Vídeo começou a tocar automaticamente
-        }).catch(error => {
-          console.warn("Autoplay foi impedido:", error);
-          setShowPlayButton(true); // Mostra o botão se o autoplay for bloqueado
-          setIsPlaying(false);
-        });
-      };
-
-      const handlePlay = () => setIsPlaying(true);
-      const handlePause = () => setIsPlaying(false);
-      const handleEnded = () => setIsPlaying(false);
-
-      videoElement.addEventListener('canplaythrough', handleCanPlayThrough);
-      videoElement.addEventListener('play', handlePlay);
-      videoElement.addEventListener('pause', handlePause);
-      videoElement.addEventListener('ended', handleEnded);
-
-
-      // Fallback se o vídeo não carregar ou reproduzir após um timeout
-      const loadTimeout = setTimeout(() => {
-        if (!videoLoaded && !isPlaying) { // Se o vídeo não carregou a tempo E não está a tocar
-          console.warn("Vídeo não carregou ou autoplay impedido após timeout. Exibindo botão de reprodução.");
-          setShowPlayButton(true);
+    <!-- Estilos personalizados e animações -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
         }
-      }, 3000); // 3 segundos de timeout
+        .text-shadow { text-shadow: 0px 2px 4px rgba(0,0,0,0.4); }
+        .text-shadow-lg { text-shadow: 0px 4px 8px rgba(0,0,0,0.5); }
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeInDown { animation: fadeInDown 0.8s ease-out forwards; }
+        .animate-fadeInUp { animation: fadeInUp 0.8s ease-out forwards; }
+        .delay-200 { animation-delay: 0.2s; }
+        .delay-400 { animation-delay: 0.4s; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Onde a aplicação React será renderizada -->
+    <div id="root"></div>
 
-      return () => {
-        videoElement.removeEventListener('canplaythrough', handleCanPlayThrough);
-        videoElement.removeEventListener('play', handlePlay);
-        videoElement.removeEventListener('pause', handlePause);
-        videoElement.removeEventListener('ended', handleEnded);
-        clearTimeout(loadTimeout);
-      };
-    }
-  }, [siteConfig.heroVideoUrl, videoLoaded, isPlaying]); // Dependências ajustadas
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Disponibiliza as funções do Firebase globalmente para o script Babel
+        window.firebase = {
+            initializeApp,
+            getAuth,
+            signInAnonymously,
+            signInWithCustomToken,
+            onAuthStateChanged,
+            getFirestore,
+            doc,
+            getDoc,
+            addDoc,
+            setDoc,
+            updateDoc,
+            onSnapshot,
+            collection,
+            query,
+            where,
+            getDocs
+        };
+    </script>
 
-  const handlePlayButtonClick = () => {
-    if (videoRef.current) {
-      videoRef.current.play().then(() => {
-        setShowPlayButton(false); // Esconde o botão se a reprodução for bem-sucedida
-        setIsPlaying(true);
-      }).catch(error => {
-        console.error("Erro ao tentar reproduzir o vídeo manualmente:", error);
-        // Pode adicionar uma mensagem de erro ao usuário aqui
-      });
-    }
-  };
+    <!-- Seu código React completo (com tipo "text/babel") -->
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const { initializeApp } = window.firebase;
+        const { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } = window.firebase;
+        const { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, onSnapshot, collection, query, where, getDocs } = window.firebase;
 
-  // Estado para controlar a exibição do botão de play
-  const [showPlayButton, setShowPlayButton] = useState(false);
+        // --- Variáveis Globais e Configuração do Firebase ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        
+        let app;
+        let db;
+        let auth;
+        
+        // --- Componente HeroSection (Seção Principal) ---
+        const HeroSection = ({ siteConfig }) => {
+          const [videoLoaded, setVideoLoaded] = useState(false);
+          const [showPlayButton, setShowPlayButton] = useState(false);
+          const videoRef = useRef(null);
 
+          useEffect(() => {
+              const videoElement = videoRef.current;
+              if (!videoElement) return;
 
-  return (
-    <header className="relative h-screen flex items-center justify-center overflow-hidden">
-      {siteConfig.heroVideoUrl ? (
-        <video
-          key={siteConfig.heroVideoUrl} // Adiciona key para forçar re-renderização se o URL mudar
-          ref={videoRef}
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute z-10 w-auto min-w-full min-h-full max-w-none object-cover"
-          poster={siteConfig.heroPosterUrl || "https://placehold.co/1920x1080/D0F0E0/000000?text=Carregando+Vídeo"}
-        >
-          <source src={siteConfig.heroVideoUrl} type="video/mp4" />
-          O seu navegador não suporta a tag de vídeo.
-        </video>
-      ) : (
-        <img
-          src={siteConfig.heroPosterUrl || "https://placehold.co/1920x1080/D0F0E0/000000?text=Vídeo+Indisponível"}
-          alt=""
-          className="absolute z-10 w-auto min-w-full min-h-full max-w-none object-cover"
-        />
-      )}
+              const handleCanPlay = () => {
+                  setVideoLoaded(true);
+                  videoElement.play().catch(error => {
+                      console.warn("Autoplay foi impedido pelo navegador:", error);
+                      setShowPlayButton(true);
+                  });
+              };
+              
+              const loadTimeout = setTimeout(() => {
+                  if (!videoLoaded) {
+                      setShowPlayButton(true);
+                  }
+              }, 5000);
 
-      {!isPlaying && showPlayButton && ( // Mostra o fallback APENAS se não estiver a tocar E o botão deve ser mostrado
-        <div className="absolute z-15 inset-0 flex flex-col items-center justify-center bg-gray-900 bg-opacity-70 text-white text-center p-4">
-          <p className="text-xl md:text-2xl font-semibold mb-4">
-            O vídeo não iniciou automaticamente. Clique para reproduzir:
-          </p>
-          <button
-            onClick={handlePlayButtonClick}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-emerald-300 text-xl"
-          >
-            Reproduzir Vídeo
-          </button>
-        </div>
-      )}
+              videoElement.addEventListener('canplay', handleCanPlay);
 
-      {/* Overlay para melhorar a legibilidade do texto e criar harmonia visual */}
-      <div className="absolute z-20 inset-0 bg-emerald-900 opacity-40"></div>
+              return () => {
+                  videoElement.removeEventListener('canplay', handleCanPlay);
+                  clearTimeout(loadTimeout);
+              };
+          }, [siteConfig.heroVideoUrl]);
 
-      {/* Conteúdo da Seção Hero */}
-      <div className="relative z-30 text-white text-center p-8 rounded-lg bg-emerald-800 bg-opacity-20 backdrop-blur-sm">
-        <h1 className="text-6xl md:text-8xl font-extrabold mb-6 animate-fadeInDown text-shadow-lg">
-          {siteConfig.heroTitle || "A Sua Clínica, Mais Inteligente."}
-        </h1>
-        <p className="text-2xl md:text-3xl mb-10 animate-fadeInUp delay-200 font-light text-gray-100 text-shadow">
-          {siteConfig.heroSubtitle || "Inovação e eficiência para a gestão médica, com um toque de excelência."}
-        </p>
-        <a
-          href={siteConfig.heroButtonLink || "#sobre"}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-10 rounded-full shadow-xl transition duration-300 ease-in-out transform hover:scale-105 animate-fadeInUp delay-400 text-xl focus:outline-none focus:ring-4 focus:ring-emerald-300"
-        >
-          {siteConfig.heroButtonText || "Saiba Mais"}
-        </a>
-      </div>
-    </header>
-  );
-};
+          const handlePlayButtonClick = () => {
+              if (videoRef.current) {
+                  videoRef.current.play().then(() => {
+                      setShowPlayButton(false);
+                  }).catch(error => {
+                      console.error("Erro ao tentar reproduzir o vídeo:", error);
+                  });
+              }
+          };
 
-// Componente de Link de Navegação
-const NavLink = ({ href, text, mobile = false }) => (
-  <a
-    href={href}
-    className={`block py-2 px-4 rounded-lg text-white font-medium hover:bg-emerald-700 hover:text-emerald-200 transition duration-300
-      ${mobile ? 'text-lg' : 'text-xl'}`}
-    onClick={() => mobile && document.querySelector('nav').querySelector('button').click()}
-  >
-    {text}
-  </a>
-);
-
-// Componente para a barra de navegação
-const Navbar = ({ userId, siteConfig }) => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <nav className="bg-emerald-800 p-4 shadow-2xl sticky top-0 z-50 bg-opacity-90 backdrop-blur-sm">
-      <div className="container mx-auto flex justify-between items-center">
-        <a href="#" className="text-white text-4xl font-extrabold rounded-md p-2 hover:text-emerald-200 transition duration-300">
-          {siteConfig.clinicName || "Clínica Inteligente"}
-        </a>
-
-        <div className="md:hidden">
-          <button onClick={() => setIsOpen(!isOpen)} className="text-white focus:outline-none">
-            <svg className="w-9 h-9" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              {isOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+          return (
+            <header className="relative h-screen flex items-center justify-center overflow-hidden">
+              {siteConfig.heroVideoUrl ? (
+                <video
+                  key={siteConfig.heroVideoUrl}
+                  ref={videoRef}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="absolute z-10 w-auto min-w-full min-h-full max-w-none object-cover"
+                  poster={siteConfig.heroPosterUrl || "https://placehold.co/1920x1080/D0F0E0/000000?text=Carregando+Vídeo"}
+                >
+                  <source src={siteConfig.heroVideoUrl} type="video/mp4" />
+                  O seu navegador não suporta a tag de vídeo.
+                </video>
               ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                <img
+                  src={siteConfig.heroPosterUrl || "https://placehold.co/1920x1080/D0F0E0/000000?text=Vídeo+Indisponível"}
+                  alt="Imagem de fundo da clínica"
+                  className="absolute z-10 w-auto min-w-full min-h-full max-w-none object-cover"
+                />
               )}
-            </svg>
-          </button>
-        </div>
 
-        <div className="hidden md:flex space-x-8">
-          {siteConfig.navLinks && siteConfig.navLinks.map((link, index) => (
-            <NavLink key={index} href={link.href} text={link.text} />
-          ))}
-          {userId && (
-            <span className="text-white text-lg font-medium py-2 px-4 rounded-md">
-              ID: {userId}
-            </span>
-          )}
-        </div>
-      </div>
+              {showPlayButton && (
+                <div className="absolute z-15 inset-0 flex flex-col items-center justify-center bg-gray-900 bg-opacity-70 text-white text-center p-4">
+                  <p className="text-xl md:text-2xl font-semibold mb-4">
+                    O vídeo não iniciou. Clique para reproduzir.
+                  </p>
+                  <button
+                    onClick={handlePlayButtonClick}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-emerald-300 text-xl"
+                  >
+                    Reproduzir
+                  </button>
+                </div>
+              )}
 
-      {isOpen && (
-        <div className="md:hidden mt-4 space-y-2 px-2 pb-3">
-          {siteConfig.navLinks && siteConfig.navLinks.map((link, index) => (
-            <NavLink key={index} href={link.href} text={link.text} mobile />
-          ))}
-          {userId && (
-            <span className="text-white text-lg font-medium py-2 px-4 rounded-md block text-center">
-              ID: {userId}
-            </span>
-          )}
-        </div>
-      )}
-    </nav>
-  );
-};
+              <div className="absolute z-20 inset-0 bg-emerald-900 opacity-40"></div>
 
-// Componente para o card de funcionalidades
-const FeatureCard = ({ title, description, icon }) => (
-  <div className="bg-white p-8 rounded-2xl shadow-lg flex flex-col items-center text-center transform transition duration-300 hover:scale-105 hover:shadow-2xl border border-gray-100">
-    <div className="text-6xl mb-4 text-emerald-600">{icon}</div>
-    <h3 className="text-2xl font-bold text-emerald-800 mb-3">{title}</h3>
-    <p className="text-gray-700 leading-relaxed">{description}</p>
-  </div>
-);
+              <div className="relative z-30 text-white text-center p-8 rounded-lg bg-emerald-800 bg-opacity-20 backdrop-blur-sm">
+                <h1 className="text-6xl md:text-8xl font-extrabold mb-6 animate-fadeInDown text-shadow-lg">
+                  {siteConfig.heroTitle || "A Sua Clínica, Mais Inteligente."}
+                </h1>
+                <p className="text-2xl md:text-3xl mb-10 animate-fadeInUp delay-200 font-light text-gray-100 text-shadow">
+                  {siteConfig.heroSubtitle || "Inovação e eficiência para a gestão médica, com um toque de excelência."}
+                </p>
+                <a
+                  href={siteConfig.heroButtonLink || "#sobre"}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-10 rounded-full shadow-xl transition duration-300 ease-in-out transform hover:scale-105 animate-fadeInUp delay-400 text-xl focus:outline-none focus:ring-4 focus:ring-emerald-300"
+                >
+                  {siteConfig.heroButtonText || "Saiba Mais"}
+                </a>
+              </div>
+            </header>
+          );
+        };
 
-// Componente para o Card de Plano de Assinatura
-const PlanCard = ({ plan }) => {
-  return (
-    <div className={`bg-white p-10 rounded-3xl shadow-lg flex flex-col items-center text-center transition duration-300 hover:scale-105 hover:shadow-2xl border border-gray-100
-      ${plan.isPopular ? 'border-4 border-emerald-400 transform scale-105 shadow-2xl' : ''}`}>
-      {plan.isPopular && (
-        <span className="bg-emerald-500 text-white text-base font-bold px-5 py-2 rounded-full mb-6 -mt-16 shadow-md uppercase tracking-wider">
-          Mais Popular
-        </span>
-      )}
-      <h3 className="text-3xl font-bold text-emerald-700 mb-4">{plan.name}</h3>
-      <p className="text-5xl font-extrabold text-emerald-600 mb-6">{plan.price}</p>
-      <ul className="text-left text-gray-700 space-y-3 mb-8 w-full">
-        {plan.features.map((feature, idx) => (
-          <li key={idx} className="flex items-center">
-            <svg className="w-6 h-6 text-lime-400 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            {feature}
-          </li>
-        ))}
-      </ul>
-      <button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-emerald-300">
-        Assinar Agora</button>
-    </div>
-  );
-};
-
-// Novo Componente para Planos de Assinatura
-const SubscriptionPlans = () => {
-  const plans = [
-    {
-      name: "Básico",
-      price: "R$ 99/mês",
-      features: [
-        "Gestão de pacientes (até 100)",
-        "Agendamento básico",
-        "Suporte por e-mail",
-        "Relatórios mensais"
-      ],
-      isPopular: false,
-    },
-    {
-      name: "Profissional",
-      price: "R$ 249/mês",
-      features: [
-        "Gestão de pacientes (ilimitado)",
-        "Agendamento inteligente com lembretes",
-        "Gestão financeira básica",
-        "Resultados de exames online",
-        "Suporte prioritário por chat"
-      ],
-      isPopular: true,
-    },
-    {
-      name: "Premium",
-      price: "R$ 499/mês",
-      features: [
-        "Todas as funcionalidades do Profissional",
-        "Gestão completa de funcionários e médicos",
-        "Controle de estoque",
-        "Consultas online (telemedicina)",
-        "Suporte 24/7 dedicado",
-        "Recursos avançados de IA para otimização e análise"
-      ],
-      isPopular: false,
-    },
-  ];
-
-  return (
-    <section id="planos" className="mb-24 py-16 bg-gradient-to-br from-emerald-50 to-lime-50 rounded-3xl shadow-xl border border-emerald-100">
-      <h2 className="text-5xl font-extrabold text-center text-emerald-800 mb-12 leading-tight">Escolha o Plano Ideal para a Sua Clínica</h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-10 max-w-6xl mx-auto px-4">
-        {plans.map((plan, index) => (
-          <PlanCard key={index} plan={plan} />
-        ))}
-      </div>
-    </section>
-  );
-};
-
-// Componente para um Chatbot de IA (Orientador de Sintomas)
-const AIChatBot = () => {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSendMessage = async () => {
-    if (input.trim() === '') return;
-
-    const userMessage = { sender: 'user', text: input };
-    setMessages((prevMessages) => [...prevMessages, userMessage]);
-    setInput('');
-    setIsLoading(true);
-
-    // --- CHAMADA REAL PARA A API GEMINI ---
-    const prompt = `Você é um assistente de saúde. Com base nos seguintes sintomas, forneça informações gerais e orientações sobre quando procurar um médico. NÃO forneça diagnósticos ou conselhos médicos específicos. Sintomas: ${userMessage.text}`;
-    let chatHistory = [];
-    chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-    const payload = { contents: chatHistory };
-    const apiKey = ""; // A chave da API será fornecida pelo ambiente de execução
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-    try {
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const result = await response.json();
-      if (result.candidates && result.candidates.length > 0 &&
-          result.candidates[0].content && result.candidates[0].content.parts &&
-          result.candidates[0].content.parts.length > 0) {
-        const aiResponseText = result.candidates[0].content.parts[0].text;
-        const aiMessage = { sender: 'ai', text: aiResponseText };
-        setMessages((prevMessages) => [...prevMessages, aiMessage]);
-      } else {
-        const aiMessage = { sender: 'ai', text: 'Desculpe, não consegui gerar uma resposta no momento. Por favor, tente novamente.' };
-        setMessages((prevMessages) => [...prevMessages, aiMessage]);
-      }
-    } catch (error) {
-      console.error("Erro ao chamar a API de IA:", error);
-      const aiMessage = { sender: 'ai', text: 'Ocorreu um erro ao processar sua solicitação. Tente novamente mais tarde.' };
-      setMessages((prevMessages) => [...prevMessages, aiMessage]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="max-w-2xl mx-auto bg-emerald-50 p-8 rounded-2xl shadow-inner border border-emerald-100">
-      <h3 className="text-3xl font-bold text-center text-emerald-700 mb-6">Orientador de Sintomas ✨</h3>
-      <p className="text-md text-center text-gray-600 mb-6">
-        Descreva seus sintomas para receber informações gerais e orientações. Lembre-se: esta ferramenta não substitui uma consulta médica.
-      </p>
-      <div className="h-72 overflow-y-auto mb-6 p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
-        {messages.length === 0 && (
-          <p className="text-gray-500 text-center italic mt-16">Digite seus sintomas aqui...</p>
-        )}
-        {messages.map((msg, index) => (
-          <div
-            key={index}
-            className={`mb-3 p-4 rounded-xl max-w-[85%] text-lg ${
-              msg.sender === 'user'
-                ? 'bg-emerald-200 text-emerald-900 ml-auto rounded-br-none shadow-md'
-                : 'bg-gray-100 text-gray-800 rounded-bl-none shadow-md'
-            }`}
+        // --- Componente Navbar (Barra de Navegação) ---
+        const NavLink = ({ href, text, mobile = false, onClick }) => (
+          <a
+            href={href}
+            onClick={onClick}
+            className={`block py-2 px-4 rounded-lg text-white font-medium hover:bg-emerald-700 hover:text-emerald-200 transition duration-300 ${mobile ? 'text-lg' : 'text-xl'}`}
           >
-            {msg.text}
+            {text}
+          </a>
+        );
+
+        const Navbar = ({ userId, siteConfig }) => {
+          const [isOpen, setIsOpen] = useState(false);
+          return (
+            <nav className="bg-emerald-800 p-4 shadow-2xl sticky top-0 z-50 bg-opacity-90 backdrop-blur-sm">
+              <div className="container mx-auto flex justify-between items-center">
+                <a href="#" className="text-white text-4xl font-extrabold rounded-md p-2 hover:text-emerald-200 transition duration-300">
+                  {siteConfig.clinicName || "Clínica Inteligente"}
+                </a>
+                <div className="md:hidden">
+                  <button onClick={() => setIsOpen(!isOpen)} className="text-white focus:outline-none">
+                    <svg className="w-9 h-9" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      {isOpen ? (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                      ) : (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                      )}
+                    </svg>
+                  </button>
+                </div>
+                <div className="hidden md:flex space-x-6 items-center">
+                  {siteConfig.navLinks && siteConfig.navLinks.map((link, index) => (
+                    <NavLink key={index} href={link.href} text={link.text} />
+                  ))}
+                  {userId && (
+                    <span className="bg-emerald-900 text-emerald-200 text-xs font-mono py-1 px-2 rounded-md">
+                      ID: {userId.substring(0, 8)}...
+                    </span>
+                  )}
+                </div>
+              </div>
+              {isOpen && (
+                <div className="md:hidden mt-4 space-y-2 px-2 pb-3">
+                  {siteConfig.navLinks && siteConfig.navLinks.map((link, index) => (
+                    <NavLink key={index} href={link.href} text={link.text} mobile onClick={() => setIsOpen(false)} />
+                  ))}
+                  {userId && (
+                    <span className="text-white text-sm font-medium py-2 px-4 rounded-md block text-center bg-emerald-700 mt-2">
+                      ID: {userId}
+                    </span>
+                  )}
+                </div>
+              )}
+            </nav>
+          );
+        };
+
+        // --- Componente FeatureCard (Cartão de Funcionalidade) ---
+        const FeatureCard = ({ title, description, icon }) => (
+          <div className="bg-white p-8 rounded-2xl shadow-lg flex flex-col items-center text-center transform transition duration-300 hover:scale-105 hover:shadow-2xl border border-gray-100">
+            <div className="text-6xl mb-4 text-emerald-600">{icon}</div>
+            <h3 className="text-2xl font-bold text-emerald-800 mb-3">{title}</h3>
+            <p className="text-gray-700 leading-relaxed">{description}</p>
           </div>
-        ))}
-        {isLoading && (
-          <div className="mb-3 p-4 rounded-xl bg-gray-100 text-gray-800 rounded-bl-none shadow-md">
-            A digitar...
-          </div>
-        )}
-      </div>
-      <div className="flex">
-        <input
-          type="text"
-          className="flex-grow px-5 py-3 border border-gray-200 rounded-l-xl focus:ring-emerald-400 focus:border-emerald-400 text-lg transition duration-300"
-          placeholder="Ex: dor de cabeça e febre"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyPress={(e) => {
-            if (e.key === 'Enter') handleSendMessage();
-          }}
-          disabled={isLoading}
-        />
-        <button
-          onClick={handleSendMessage}
-          className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 px-8 rounded-r-xl shadow-md transition duration-300 ease-in-out transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-4 focus:ring-emerald-300"
-          disabled={isLoading}
-        >
-          Perguntar
-        </button>
-      </div>
-      <p className="text-sm text-gray-500 mt-3 text-center">
-        *Esta ferramenta fornece apenas informações gerais. Consulte um médico para diagnóstico e tratamento.
-      </p>
-    </div>
-  );
-};
-
-// Novo Componente para Gerar Descrições de Exames
-const ExamDescriptionGenerator = () => {
-  const [examName, setExamName] = useState('');
-  const [description, setDescription] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  // Lista de exames da Clínica CDC e outros comuns
-  const predefinedExams = [
-    "Punção-Biópsia Guiada por Ultrassom",
-    "Captura Híbrida",
-    "Raio-X Digital",
-    "Colonoscopia",
-    "Ressonância Magnética",
-    "Colposcopia",
-    "Eletrocardiograma", // Adicionado da referência CDC
-    "Ecocardiograma",    // Adicionado da referência CDC
-    "Hemograma Completo",
-    "Exame de Urina",
-    "Teste de Glicemia",
-    "Ultrassonografia",
-    "Tomografia Computadorizada"
-  ];
-
-  const handleGenerateDescription = async () => {
-    const selectedExam = examName.trim(); // Usa o valor do input, que pode ser digitado ou selecionado
-
-    if (selectedExam === '') {
-      setError("Por favor, insira ou selecione o nome do exame.");
-      return;
-    }
-
-    setDescription('');
-    setIsLoading(true);
-    setError(null);
-
-    // Prompt para o LLM gerar a descrição do exame
-    const prompt = `Gere uma descrição clara e concisa para o seguinte exame médico, incluindo seu propósito, como é realizado (de forma simplificada) e o que ele detecta. Use uma linguagem acessível para pacientes. Exame: ${selectedExam}`;
-    let chatHistory = [];
-    chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-    const payload = { contents: chatHistory };
-    const apiKey = ""; // A chave da API será fornecida pelo ambiente de execução
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-    try {
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const result = await response.json();
-      if (result.candidates && result.candidates.length > 0 &&
-          result.candidates[0].content && result.candidates[0].content.parts &&
-          result.candidates[0].content.parts.length > 0) {
-        const generatedText = result.candidates[0].content.parts[0].text;
-        setDescription(generatedText);
-      } else {
-        setError('Não foi possível gerar a descrição. Tente novamente com outro nome de exame.');
-      }
-    } catch (e) {
-      console.error("Erro ao chamar a API Gemini para descrição de exame:", e);
-      setError('Ocorreu um erro ao gerar a descrição. Verifique sua conexão ou tente mais tarde.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="max-w-2xl mx-auto bg-lime-50 p-8 rounded-2xl shadow-inner border border-lime-100 mt-12">
-      <h3 className="text-3xl font-bold text-center text-lime-700 mb-6">Gerador de Descrições de Exames ✨</h3>
-      <p className="text-md text-center text-gray-600 mb-6">
-        Insira ou selecione o nome de um exame para gerar uma descrição amigável para pacientes.
-      </p>
-      <div className="flex flex-col gap-4">
-        <select
-          className="w-full px-5 py-3 border border-gray-200 rounded-xl shadow-sm focus:ring-lime-400 focus:border-lime-400 text-lg transition duration-300 bg-white"
-          value={examName}
-          onChange={(e) => setExamName(e.target.value)}
-          disabled={isLoading}
-        >
-          <option value="">-- Selecione um exame --</option>
-          {predefinedExams.map((exam, index) => (
-            <option key={index} value={exam}>{exam}</option>
-          ))}
-        </select>
-        <input
-          type="text"
-          className="w-full px-5 py-3 border border-gray-200 rounded-xl shadow-sm focus:ring-lime-400 focus:border-lime-400 text-lg transition duration-300"
-          placeholder="Ou digite o nome do exame aqui..."
-          value={examName}
-          onChange={(e) => setExamName(e.target.value)}
-          disabled={isLoading}
-        />
-        <button
-          onClick={handleGenerateDescription}
-          className="w-full bg-lime-600 hover:bg-lime-700 text-white font-bold py-3 px-8 rounded-xl shadow-md transition duration-300 ease-in-out transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-4 focus:ring-lime-300"
-          disabled={isLoading}
-        >
-          {isLoading ? 'Gerando...' : 'Gerar Descrição'}
-        </button>
-      </div>
-      {error && <p className="text-red-600 text-center mt-4">{error}</p>}
-      {description && (
-        <div className="mt-8 p-6 bg-white rounded-lg border border-gray-100 shadow-sm">
-          <h4 className="text-xl font-semibold text-emerald-800 mb-3">Descrição Gerada:</h4>
-          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{description}</p>
-        </div>
-      )}
-    </div>
-  );
-};
-
-
-// Novo Componente para a Seção de Inteligência Artificial
-const AISection = () => {
-  return (
-    <section id="ia" className="mb-24 py-16 bg-white p-12 rounded-3xl shadow-xl border border-gray-50">
-      <h2 className="text-5xl font-extrabold text-center text-emerald-800 mb-10 leading-tight">Inteligência Artificial para a Sua Clínica</h2>
-      <p className="text-xl text-center max-w-4xl mx-auto leading-relaxed mb-12 text-gray-700">
-        A inteligência artificial está a revolucionar a saúde. Na nossa plataforma, a IA será a sua aliada para otimizar processos, personalizar o atendimento e impulsionar o desempenho da sua clínica a um novo nível.
-      </p>
-
-      <div className="grid md:grid-cols-2 gap-12 mb-16">
-        <div className="flex flex-col items-center text-center p-6 bg-emerald-50 rounded-2xl shadow-md border border-emerald-100">
-          <div className="text-7xl text-emerald-700 mb-4">🧠</div>
-          <h3 className="text-2xl font-bold text-emerald-800 mb-3">Otimização de Processos</h3>
-          <p className="text-gray-700 leading-relaxed">
-            Automatize tarefas repetitivas, otimize agendamentos e gira o fluxo de trabalho com a ajuda de algoritmos inteligentes, libertando a sua equipa para o que realmente importa.
-          </p>
-        </div>
-        <div className="flex flex-col items-center text-center p-6 bg-lime-50 rounded-2xl shadow-md border border-lime-100">
-          <div className="text-7xl text-lime-700 mb-4">📊</div>
-          <h3 className="text-2xl font-bold text-emerald-800 mb-3">Análise de Dados Avançada</h3>
-          <p className="text-gray-700 leading-relaxed">
-            Obtenha insights valiosos sobre o desempenho da clínica, tendências de pacientes e oportunidades de crescimento através de análises preditivas e relatórios inteligentes.
-          </p>
-        </div>
-        <div className="flex flex-col items-center text-center p-6 bg-sky-50 rounded-2xl shadow-md border border-sky-100">
-          <div className="text-7xl text-sky-700 mb-4">💬</div>
-          <h3 className="text-2xl font-bold text-emerald-800 mb-3">Atendimento Personalizado</h3>
-          <p className="text-gray-700 leading-relaxed">
-            Utilize chatbots inteligentes para responder a dúvidas frequentes, auxiliar no agendamento e fornecer suporte 24/7 aos pacientes, melhorando a satisfação.
-          </p>
-        </div>
-        <div className="flex flex-col items-center text-center p-6 bg-rose-50 rounded-2xl shadow-md border border-rose-100">
-          <div className="text-7xl text-rose-700 mb-4">🩺</div>
-          <h3 className="text-2xl font-bold text-emerald-800 mb-3">Suporte a Decisões Clínicas</h3>
-          <p className="text-gray-700 leading-relaxed">
-            Ferramentas de IA podem auxiliar médicos com informações relevantes para diagnósticos e planos de tratamento, aumentando a precisão e a eficácia dos cuidados.
-          </p>
-        </div>
-      </div>
-
-      <h3 className="text-4xl font-bold text-center text-emerald-800 mb-8 leading-tight">Ferramentas de IA para Você:</h3>
-      <AIChatBot /> {/* Orientador de Sintomas */}
-      <ExamDescriptionGenerator /> {/* Novo Gerador de Descrições de Exames */}
-    </section>
-  );
-};
-
-// Novo Componente para a Seção de Teleconsultas de Alta Resolução
-const HighResolutionConsultationSection = ({ siteConfig }) => {
-  return (
-    <section id="teleconsultas" className="mb-24 py-16 bg-gradient-to-br from-sky-50 to-cyan-50 p-12 rounded-3xl shadow-xl border border-sky-100">
-      <h2 className="text-5xl font-extrabold text-center text-emerald-800 mb-10 leading-tight">Teleconsultas com Alta Resolução</h2>
-      <p className="text-xl text-center max-w-4xl mx-auto leading-relaxed mb-12 text-gray-700">
-        Experimente a próxima geração de teleconsultas com a nossa plataforma, que oferece vídeo e áudio em alta resolução para uma interação clara e eficaz entre médicos e pacientes, onde quer que estejam.
-      </p>
-
-      <div className="grid md:grid-cols-2 gap-12">
-        <div className="flex flex-col items-center text-center p-6 bg-white rounded-2xl shadow-md border border-gray-100">
-          <div className="text-7xl text-sky-700 mb-4">🎥</div>
-          <h3 className="text-2xl font-bold text-emerald-800 mb-3">Qualidade de Vídeo Superior</h3>
-          <p className="text-gray-700 leading-relaxed">
-            Conecte-se com clareza visual, permitindo que os médicos observem detalhes importantes e os pacientes se sintam mais próximos do atendimento presencial.
-          </p>
-        </div>
-        <div className="flex flex-col items-center text-center p-6 bg-white rounded-2xl shadow-md border border-gray-100">
-          <div className="text-7xl text-cyan-700 mb-4">🎤</div>
-          <h3 className="text-2xl font-bold text-emerald-800 mb-3">Áudio Cristalino</h3>
-          <p className="text-gray-700 leading-relaxed">
-            Garanta que cada palavra seja ouvida, eliminando ruídos e interferências para uma comunicação fluida e sem interrupções.
-          </p>
-        </div>
-        <div className="flex flex-col items-center text-center p-6 bg-white rounded-2xl shadow-md border border-gray-100">
-          <div className="text-7xl text-blue-700 mb-4">🌐</div>
-          <h3 className="text-2xl font-bold text-emerald-800 mb-3">Conexão Estável e Segura</h3>
-          <p className="text-gray-700 leading-relaxed">
-            Nossa infraestrutura garante estabilidade na conexão e a segurança dos seus dados, protegendo a privacidade das suas consultas.
-          </p>
-        </div>
-        <div className="flex flex-col items-center text-center p-6 bg-white rounded-2xl shadow-md border border-gray-100">
-          <div className="text-7xl text-purple-700 mb-4">👩‍⚕️👨‍⚕️</div>
-          <h3 className="text-2xl font-bold text-emerald-800 mb-3">Experiência Otimizada</h3>
-          <p className="text-gray-700 leading-relaxed">
-            Interface intuitiva e ferramentas de colaboração para uma teleconsulta eficiente, tanto para o profissional quanto para o paciente.
-          </p>
-        </div>
-      </div>
-      {/* Nova imagem de médicos interagindo */}
-      <div className="mt-16 text-center">
-        <img
-          src={siteConfig.teleconsultasImage}
-          alt="Médicos em Teleconsulta"
-          className="w-full max-w-4xl mx-auto rounded-2xl shadow-lg border border-gray-100"
-        />
-      </div>
-    </section>
-  );
-};
-
-// Novo Componente para a Seção do Aplicativo Interativo Integrado
-const InteractiveAppSection = ({ siteConfig }) => {
-  return (
-    <section id="app" className="mb-24 py-16 bg-gradient-to-br from-purple-50 to-pink-50 p-12 rounded-3xl shadow-xl border border-purple-100">
-      <h2 className="text-5xl font-extrabold text-center text-emerald-800 mb-10 leading-tight">O Nosso Aplicativo Interativo Integrado</h2>
-      <p className="text-xl text-center max-w-4xl mx-auto leading-relaxed mb-12 text-gray-700">
-        Leve a gestão da sua clínica e o atendimento ao paciente para a palma da sua mão! O nosso aplicativo móvel oferece uma experiência interativa e totalmente integrada com o site.
-      </p>
-
-      <div className="flex flex-col md:flex-row items-center justify-center gap-16 mb-16">
-        <div className="md:w-1/2 text-center md:text-left">
-          <h3 className="text-3xl font-bold text-emerald-700 mb-6">Funcionalidades na Ponta dos Dedos</h3>
-          <ul className="list-disc list-inside text-lg space-y-4 text-gray-700">
-            <li><span className="font-semibold">Agendamento Simplificado:</span> Marque e gerencie consultas e exames de forma rápida e intuitiva, a qualquer hora, em qualquer lugar.</li>
-            <li><span className="font-semibold">Acesso Rápido a Resultados:</span> Visualize resultados de exames e históricos médicos com segurança e privacidade.</li>
-            <li><span className="font-semibold">Teleconsultas Integradas:</span> Realize consultas online com alta resolução diretamente pelo aplicativo, com a mesma qualidade do site.</li>
-            <li><span className="font-semibold">Notificações Personalizadas:</span> Receba lembretes de consultas, resultados e informações importantes diretamente no seu dispositivo.</li>
-            <li><span className="font-semibold">Comunicação Direta:</span> Mantenha contato fácil com a clínica e os profissionais de saúde.</li>
-          </ul>
-          <div className="mt-10 flex flex-wrap justify-center md:justify-start gap-4">
-            <a href="#" className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-emerald-300">
-              <i className="fab fa-apple mr-2"></i> Download na App Store
-            </a>
-            <a href="#" className="bg-lime-700 hover:bg-lime-800 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-lime-300">
-              <i className="fab fa-google-play mr-2"></i> Download no Google Play
-            </a>
-          </div>
-        </div>
-        <div className="md:w-1/2 flex justify-center">
-          {/* Imagens de exemplo de telas do aplicativo */}
-          <img
-            src={siteConfig.appImage1}
-            alt="Tela do aplicativo 1"
-            className="w-48 h-96 object-cover rounded-3xl shadow-2xl transform rotate-3 hover:rotate-0 transition duration-300 -mr-8 z-10"
-          />
-          <img
-            src={siteConfig.appImage2}
-            alt="Tela do aplicativo 2"
-            className="w-48 h-96 object-cover rounded-3xl shadow-2xl transform -rotate-3 hover:rotate-0 transition duration-300 z-0"
-          />
-        </div>
-      </div>
-    </section>
-  );
-};
-
-// Novo Componente para a Seção do Médico 24h
-const Medico24hsSection = ({ siteConfig }) => {
-  return (
-    <section id="medico24hs" className="mb-24 py-16 bg-gradient-to-br from-red-50 to-orange-50 p-12 rounded-3xl shadow-xl border border-red-100">
-      <h2 className="text-5xl font-extrabold text-center text-emerald-800 mb-10 leading-tight">Médico 24h: Atendimento Online a Qualquer Momento</h2>
-      <p className="text-xl text-center max-w-4xl mx-auto leading-relaxed mb-12 text-gray-700">
-        Precisa de orientação médica agora? Com o nosso serviço Médico 24h, você tem acesso a consultas online com plantonistas qualificados a qualquer hora do dia ou da noite, sem sair de casa.
-      </p>
-
-      <div className="grid md:grid-cols-2 gap-12">
-        <div className="flex flex-col items-center text-center p-6 bg-white rounded-2xl shadow-md border border-gray-100">
-          <div className="text-7xl text-red-700 mb-4">⏰</div>
-          <h3 className="text-2xl font-bold text-emerald-800 mb-3">Disponibilidade 24/7</h3>
-          <p className="text-gray-700 leading-relaxed">
-            Médicos de plantão prontos para atender você a qualquer hora, incluindo feriados e fins de semana.
-          </p>
-        </div>
-        <div className="flex flex-col items-center text-center p-6 bg-white rounded-2xl shadow-md border border-gray-100">
-          <div className="text-7xl text-orange-700 mb-4">🏠</div>
-          <h3 className="text-2xl font-bold text-emerald-800 mb-3">Conforto e Comodidade</h3>
-          <p className="text-gray-700 leading-relaxed">
-            Receba atendimento médico no conforto da sua casa, sem deslocamentos ou salas de espera.
-          </p>
-        </div>
-        <div className="flex flex-col items-center text-center p-6 bg-white rounded-2xl shadow-md border border-gray-100">
-          <div className="text-7xl text-yellow-700 mb-4">⚡</div>
-          <h3 className="text-2xl font-bold text-emerald-800 mb-3">Atendimento Rápido</h3>
-          <p className="text-gray-700 leading-relaxed">
-            Conecte-se com um médico em minutos para obter orientações e resolver suas dúvidas de saúde.
-          </p>
-        </div>
-        <div className="flex flex-col items-center text-center p-6 bg-white rounded-2xl shadow-md border border-gray-100">
-          <div className="text-7xl text-purple-700 mb-4">👩‍⚕️</div>
-          <h3 className="text-2xl font-bold text-emerald-800 mb-3">Equipe Qualificada</h3>
-          <p className="text-gray-700 leading-relaxed">
-            Nossa equipe é composta por médicos experientes e dedicados, prontos para oferecer o melhor cuidado.
-          </p>
-        </div>
-      </div>
-
-      <div className="text-center mt-12">
-        <a
-          href="#" // Link para iniciar uma consulta 24h
-          className="bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-10 rounded-full shadow-xl transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-red-300 text-xl"
-        >
-          Iniciar Consulta Agora
-        </a>
-      </div>
-      {/* Nova imagem de médicos interagindo */}
-      <div className="mt-16 text-center">
-        <img
-          src={siteConfig.medico24hsImage}
-          alt="Médicos de Plantão"
-          className="w-full max-w-4xl mx-auto rounded-2xl shadow-lg border border-gray-100"
-        />
-      </div>
-    </section>
-  );
-};
-
-// Novo Componente para a Seção de Exames do Paciente
-const PatientExamsSection = ({ userId }) => {
-  const [exams, setExams] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (!db || !userId) {
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    // Define the path for the patient's private data
-    const examsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/exams`);
-
-    // Listen for real-time updates to the patient's exams
-    const unsubscribe = onSnapshot(examsCollectionRef,
-      (snapshot) => {
-        const patientExams = [];
-        snapshot.forEach((doc) => {
-          patientExams.push({ id: doc.id, ...doc.data() });
-        });
-        // Sort exams by timestamp in descending order (most recent first)
-        patientExams.sort((a, b) => (b.timestamp?.toDate() || 0) - (a.timestamp?.toDate() || 0));
-        setExams(patientExams);
-        setLoading(false);
-      },
-      (err) => {
-        console.error("Erro ao buscar exames:", err);
-        setError("Não foi possível carregar os exames. Tente novamente mais tarde.");
-        setLoading(false);
-      }
-    );
-
-    // Clean up the listener on component unmount
-    return () => unsubscribe();
-  }, [userId]); // Re-run effect if userId changes
-
-  // Function to simulate adding a new exam for the current user
-  const handleAddSampleExam = async () => {
-    if (!db || !userId) {
-      console.log("Erro: Usuário não autenticado ou Firestore não inicializado.");
-      return;
-    }
-
-    try {
-      const newExam = {
-        examType: `Exame de Rotina ${exams.length + 1}`,
-        result: `Resultado simulado para o exame ${exams.length + 1}. Tudo normal.`,
-        timestamp: new Date(),
-        patientId: userId, // Associate with the current user
-        clinicNotes: "Observações da clínica: Acompanhamento de rotina.",
-      };
-
-      await addDoc(collection(db, `artifacts/${appId}/users/${userId}/exams`), newExam);
-    } catch (e) {
-      console.error("Erro ao adicionar exame de amostra: ", e);
-      console.log("Erro ao adicionar exame de amostra. Verifique o console para mais detalhes.");
-    }
-  };
-
-  return (
-    <section id="exames" className="mb-24 py-16 bg-white p-12 rounded-3xl shadow-xl border border-gray-50">
-      <h2 className="text-5xl font-extrabold text-center text-emerald-800 mb-10 leading-tight">Meus Exames</h2>
-      <p className="text-xl text-center max-w-4xl mx-auto leading-relaxed text-gray-700">
-        Acesse seus resultados de exames em tempo real, com segurança e privacidade.
-      </p>
-
-      <div className="text-center mb-8">
-        <button
-          onClick={handleAddSampleExam}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-emerald-300"
-        >
-          Adicionar Exame de Amostra
-        </button>
-        <p className="text-sm text-gray-500 mt-2">
-          (Clique para simular um novo exame para o seu ID de usuário atual)
-        </p>
-        <p className="text-md text-emerald-700 font-semibold mt-4">
-          Seu ID de Usuário: <span className="font-normal text-gray-800">{userId}</span>
-        </p>
-      </div>
-
-      {loading && (
-        <p className="text-center text-emerald-600 text-xl">Carregando seus exames...</p>
-      )}
-
-      {error && (
-        <p className="text-center text-red-600 text-xl">{error}</p>
-      )}
-
-      {!loading && exams.length === 0 && !error && (
-        <p className="text-center text-gray-600 text-xl">Nenhum exame encontrado para este usuário. Adicione um exame de amostra!</p>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-12">
-        {exams.map((exam) => (
-          <div key={exam.id} className="bg-emerald-50 p-6 rounded-2xl shadow-md border border-emerald-100 transition duration-300 hover:shadow-lg">
-            <h3 className="text-2xl font-bold text-emerald-800 mb-3">{exam.examType}</h3>
-            <p className="text-gray-700 mb-2">
-              <span className="font-semibold">Resultado:</span> {exam.result}
-            </p>
-            <p className="text-gray-600 text-sm">
-              <span className="font-semibold">Data:</span> {exam.timestamp ? new Date(exam.timestamp.toDate()).toLocaleString() : 'N/A'}
-            </p>
-            {exam.clinicNotes && (
-              <p className="text-gray-600 text-sm mt-2">
-                <span className="font-semibold">Notas da Clínica:</span> {exam.clinicNotes}
-              </p>
-            )}
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-};
-
-
-// Novo Componente para a Seção de Segurança
-const SecuritySection = () => {
-  return (
-    <section id="seguranca" className="mb-24 py-16 bg-gradient-to-br from-blue-50 to-indigo-50 p-12 rounded-3xl shadow-xl border border-blue-100">
-      <h2 className="text-5xl font-extrabold text-center text-emerald-800 mb-10 leading-tight">Sua Segurança é Nossa Prioridade</h2>
-      <p className="text-xl text-center max-w-4xl mx-auto leading-relaxed mb-12 text-gray-700">
-        Compreendemos a importância da privacidade e segurança dos seus dados. Nossa plataforma é construída com as mais avançadas tecnologias para garantir a proteção completa das suas informações médicas e pessoais.
-      </p>
-
-      <div className="grid md:grid-cols-3 gap-12">
-        <div className="flex flex-col items-center text-center p-6 bg-white rounded-2xl shadow-md border border-gray-100">
-          <div className="text-7xl text-blue-700 mb-4">🔒</div>
-          <h3 className="text-2xl font-bold text-emerald-800 mb-3">Criptografia Avançada</h3>
-          <p className="text-gray-700 leading-relaxed">
-            Todos os seus dados são criptografados de ponta a ponta, garantindo que apenas você e profissionais autorizados tenham acesso.
-          </p>
-        </div>
-        <div className="flex flex-col items-center text-center p-6 bg-white rounded-2xl shadow-md border border-gray-100">
-          <div className="text-7xl text-green-700 mb-4">🛡️</div>
-          <h3 className="text-2xl font-bold text-emerald-800 mb-3">Conformidade com LGPD</h3>
-          <p className="text-gray-700 leading-relaxed">
-            Seguimos rigorosamente as diretrizes da Lei Geral de Proteção de Dados (LGPD) para proteger sua privacidade.
-          </p>
-        </div>
-        <div className="flex flex-col items-center text-center p-6 bg-white rounded-2xl shadow-md border border-gray-100">
-          <div className="text-7xl text-purple-700 mb-4">✅</div>
-          <h3 className="text-2xl font-bold text-emerald-800 mb-3">Auditorias Constantes</h3>
-          <p className="text-gray-700 leading-relaxed">
-            Nossos sistemas passam por auditorias de segurança regulares para identificar e corrigir vulnerabilidades.
-          </p>
-        </div>
-      </div>
-      <div className="mt-16 text-center">
-        <img
-          src="https://placehold.co/1200x400/D0F0E0/000000?text=Segurança+de+Dados"
-          alt="Segurança de Dados"
-          className="w-full max-w-4xl mx-auto rounded-2xl shadow-lg border border-gray-100"
-        />
-      </div>
-    </section>
-  );
-};
-
-
-// Componente para o rodapé
-const Footer = ({ siteConfig }) => {
-  return (
-    <footer className="bg-gray-900 text-white py-14 px-4 rounded-t-3xl shadow-inner border-t border-gray-700">
-      <div className="container mx-auto grid grid-cols-1 md:grid-cols-3 gap-12 border-b border-gray-700 pb-10 mb-10">
-        {/* Coluna 1: Sobre a Clínica */}
-        <div>
-          <h4 className="text-3xl font-extrabold text-emerald-400 mb-5">{siteConfig.clinicName || "Clínica Inteligente"}</h4>
-          <p className="text-gray-400 leading-relaxed text-lg">
-            Inovando a gestão de clínicas e a experiência do paciente através de tecnologia e cuidado, com um compromisso com a excelência.
-          </p>
-        </div>
-
-        {/* Coluna 2: Links Rápidos */}
-        <div>
-          <h4 className="text-3xl font-extrabold text-emerald-400 mb-5">Links Rápidos</h4>
-          <ul className="space-y-3">
-            {siteConfig.navLinks && siteConfig.navLinks.map((link, index) => (
-              <li key={index}><a href={link.href} className="text-gray-400 hover:text-emerald-300 transition duration-300 text-lg">{link.text}</a></li>
-            ))}
-            <li><a href="#" className="text-gray-400 hover:text-emerald-300 transition duration-300 text-lg">Política de Privacidade</a></li>
-          </ul>
-        </div>
-
-        {/* Coluna 3: Contacto */}
-        <div>
-          <h4 className="text-3xl font-extrabold text-emerald-400 mb-5">Fale Connosco</h4>
-          <p className="text-gray-400 mb-3 text-lg">
-            <span className="font-semibold">Morada:</span> Rua da Inovação, 123, Cidade Futura - BR
-          </p>
-          <p className="text-gray-400 mb-3 text-lg">
-            <span className="font-semibold">Telefone:</span> (XX) XXXX-XXXX
-          </p>
-          <p className="text-gray-400 text-lg">
-            <span className="font-semibold">Email:</span> contacto@clinicainteligente.com
-          </p>
-        </div>
-      </div>
-
-      {/* Direitos Autorais */}
-      <div className="text-center text-gray-500 text-base mt-8">
-        &copy; {new Date().getFullYear()} Clínica Inteligente. Todos os direitos reservados.
-      </div>
-    </footer>
-  );
-};
-
-// Componente de Painel de Administração (para edição de conteúdo)
-const AdminPanel = ({ updateSiteConfig, siteConfig }) => {
-  const [heroVideoUrl, setHeroVideoUrl] = useState(siteConfig.heroVideoUrl);
-  const [heroPosterUrl, setHeroPosterUrl] = useState(siteConfig.heroPosterUrl);
-  const [heroTitle, setHeroTitle] = useState(siteConfig.heroTitle);
-  const [heroSubtitle, setHeroSubtitle] = useState(siteConfig.heroSubtitle);
-  const [heroButtonText, setHeroButtonText] = useState(siteConfig.heroButtonText);
-  const [heroButtonLink, setHeroButtonLink] = useState(siteConfig.heroButtonLink);
-  const [clinicName, setClinicName] = useState(siteConfig.clinicName);
-  const [aboutImage, setAboutImage] = useState(siteConfig.aboutImage);
-  const [servicesImage, setServicesImage] = useState(siteConfig.servicesImage);
-  const [teleconsultasImage, setTeleconsultasImage] = useState(siteConfig.teleconsultasImage);
-  const [medico24hsImage, setMedico24hsImage] = useState(siteConfig.medico24hsImage);
-  const [appImage1, setAppImage1] = useState(siteConfig.appImage1);
-  const [appImage2, setAppImage2] = useState(siteConfig.appImage2);
-  const [contactImage, setContactImage] = useState(siteConfig.contactImage);
-
-  // Sincroniza estados locais com siteConfig vindo do Firestore
-  useEffect(() => {
-    setHeroVideoUrl(siteConfig.heroVideoUrl);
-    setHeroPosterUrl(siteConfig.heroPosterUrl);
-    setHeroTitle(siteConfig.heroTitle);
-    setHeroSubtitle(siteConfig.heroSubtitle);
-    setHeroButtonText(siteConfig.heroButtonText);
-    setHeroButtonLink(siteConfig.heroButtonLink);
-    setClinicName(siteConfig.clinicName);
-    setAboutImage(siteConfig.aboutImage);
-    setServicesImage(siteConfig.servicesImage);
-    setTeleconsultasImage(siteConfig.teleconsultasImage);
-    setMedico24hsImage(siteConfig.medico24hsImage);
-    setAppImage1(siteConfig.appImage1);
-    setAppImage2(siteConfig.appImage2);
-    setContactImage(siteConfig.contactImage);
-  }, [siteConfig]);
-
-
-  return (
-    <section id="admin-panel" className="mb-24 py-16 bg-gray-100 p-12 rounded-3xl shadow-xl border border-gray-200">
-      <h2 className="text-5xl font-extrabold text-center text-emerald-800 mb-10 leading-tight">Painel de Administração (Conteúdo Editável)</h2>
-      <p className="text-xl text-center max-w-4xl mx-auto leading-relaxed mb-12 text-gray-700">
-        Aqui você pode editar o conteúdo do site em tempo real. As alterações serão salvas no Firestore.
-      </p>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-        {/* Hero Section Fields */}
-        <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-          <h3 className="text-2xl font-bold text-emerald-700 mb-4">Seção Principal (Hero)</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">URL do Vídeo de Fundo:</label>
-              <input
-                type="text"
-                value={heroVideoUrl}
-                onChange={(e) => setHeroVideoUrl(e.target.value)}
-                onBlur={() => updateSiteConfig('heroVideoUrl', heroVideoUrl)}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              />
+        );
+        
+        // --- Componente PlanCard (Cartão de Plano) ---
+        const PlanCard = ({ plan }) => (
+            <div className={`bg-white p-10 rounded-3xl shadow-lg flex flex-col items-center text-center transition duration-300 hover:shadow-2xl border ${plan.isPopular ? 'border-4 border-emerald-400 transform scale-105' : 'border-gray-100'}`}>
+                {plan.isPopular && (
+                    <span className="bg-emerald-500 text-white text-base font-bold px-5 py-2 rounded-full mb-6 -mt-16 shadow-md uppercase tracking-wider">
+                    Mais Popular
+                    </span>
+                )}
+                <h3 className="text-3xl font-bold text-emerald-700 mb-4">{plan.name}</h3>
+                <p className="text-5xl font-extrabold text-emerald-600 mb-6">{plan.price}</p>
+                <ul className="text-left text-gray-700 space-y-3 mb-8 w-full">
+                    {plan.features.map((feature, idx) => (
+                    <li key={idx} className="flex items-center">
+                        <svg className="w-6 h-6 text-lime-400 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        {feature}
+                    </li>
+                    ))}
+                </ul>
+                <button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-emerald-300">
+                    Assinar Agora
+                </button>
             </div>
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">URL da Imagem de Poster (Fallback):</label>
-              <input
-                type="text"
-                value={heroPosterUrl}
-                onChange={(e) => setHeroPosterUrl(e.target.value)}
-                onBlur={() => updateSiteConfig('heroPosterUrl', heroPosterUrl)}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">Título Principal:</label>
-              <input
-                type="text"
-                value={heroTitle}
-                onChange={(e) => setHeroTitle(e.target.value)}
-                onBlur={() => updateSiteConfig('heroTitle', heroTitle)}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">Subtítulo:</label>
-              <textarea
-                value={heroSubtitle}
-                onChange={(e) => setHeroSubtitle(e.target.value)}
-                onBlur={() => updateSiteConfig('heroSubtitle', heroSubtitle)}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">Texto do Botão:</label>
-              <input
-                type="text"
-                value={heroButtonText}
-                onChange={(e) => setHeroButtonText(e.target.value)}
-                onBlur={() => updateSiteConfig('heroButtonText', heroButtonText)}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">Link do Botão:</label>
-              <input
-                type="text"
-                value={heroButtonLink}
-                onChange={(e) => setHeroButtonLink(e.target.value)}
-                onBlur={() => updateSiteConfig('heroButtonLink', heroButtonLink)}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              />
-            </div>
-          </div>
-        </div>
+        );
 
-        {/* General Settings */}
-        <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-          <h3 className="text-2xl font-bold text-emerald-700 mb-4">Configurações Gerais</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">Nome da Clínica:</label>
-              <input
-                type="text"
-                value={clinicName}
-                onChange={(e) => setClinicName(e.target.value)}
-                onBlur={() => updateSiteConfig('clinicName', clinicName)}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">Imagem da Seção "Sobre":</label>
-              <input
-                type="text"
-                value={aboutImage}
-                onChange={(e) => setAboutImage(e.target.value)}
-                onBlur={() => updateSiteConfig('aboutImage', aboutImage)}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">Imagem da Seção "Serviços":</label>
-              <input
-                type="text"
-                value={servicesImage}
-                onChange={(e) => setServicesImage(e.target.value)}
-                onBlur={() => updateSiteConfig('servicesImage', servicesImage)}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">Imagem da Seção "Teleconsultas":</label>
-              <input
-                type="text"
-                value={teleconsultasImage}
-                onChange={(e) => setTeleconsultasImage(e.target.value)}
-                onBlur={() => updateSiteConfig('teleconsultasImage', teleconsultasImage)}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">Imagem da Seção "Médico 24h":</label>
-              <input
-                type="text"
-                value={medico24hsImage}
-                onChange={(e) => setMedico24hsImage(e.target.value)}
-                onBlur={() => updateSiteConfig('medico24hsImage', medico24hsImage)}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">Imagem do App (Tela 1):</label>
-              <input
-                type="text"
-                value={appImage1}
-                onChange={(e) => setAppImage1(e.target.value)}
-                onBlur={() => updateSiteConfig('appImage1', appImage1)}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">Imagem do App (Tela 2):</label>
-              <input
-                type="text"
-                value={appImage2}
-                onChange={(e) => setAppImage2(e.target.value)}
-                onBlur={() => updateSiteConfig('appImage2', appImage2)}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">Imagem da Seção "Contato":</label>
-              <input
-                type="text"
-                value={contactImage}
-                onChange={(e) => setContactImage(e.target.value)}
-                onBlur={() => updateSiteConfig('contactImage', contactImage)}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-};
+        // --- Componente SubscriptionPlans (Planos de Assinatura) ---
+        const SubscriptionPlans = () => {
+            const plans = [
+                { name: "Básico", price: "R$ 99/mês", features: ["Gestão de pacientes (até 100)", "Agendamento básico", "Suporte por e-mail", "Relatórios mensais"], isPopular: false },
+                { name: "Profissional", price: "R$ 249/mês", features: ["Gestão de pacientes (ilimitado)", "Agendamento inteligente com lembretes", "Gestão financeira básica", "Resultados de exames online", "Suporte prioritário por chat"], isPopular: true },
+                { name: "Premium", price: "R$ 499/mês", features: ["Todas as funcionalidades do Profissional", "Gestão completa de funcionários e médicos", "Controle de estoque", "Consultas online (telemedicina)", "Suporte 24/7 dedicado", "Recursos avançados de IA"], isPopular: false },
+            ];
+            return (
+                <section id="planos" className="mb-24 py-16 bg-gradient-to-br from-emerald-50 to-lime-50 rounded-3xl shadow-xl border border-emerald-100">
+                    <h2 className="text-5xl font-extrabold text-center text-emerald-800 mb-12 leading-tight">Escolha o Plano Ideal para a Sua Clínica</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-10 max-w-6xl mx-auto px-4">
+                        {plans.map((plan, index) => <PlanCard key={index} plan={plan} />)}
+                    </div>
+                </section>
+            );
+        };
+        
+        // --- Componente AIChatBot ---
+        const AIChatBot = () => {
+          const [messages, setMessages] = useState([]);
+          const [input, setInput] = useState('');
+          const [isLoading, setIsLoading] = useState(false);
 
-// Componente principal da aplicação
-const App = () => {
-  const [userId, setUserId] = useState(null);
-  const [isAuthReady, setIsAuthReady] = useState(false);
-  const [siteConfig, setSiteConfig] = useState({ // Estado para as configurações do site
-    heroVideoUrl: "https://assets.mixkit.co/videos/preview/mixkit-receptionist-at-the-reception-of-a-medical-clinic-40782-large.mp4",
-    heroPosterUrl: "https://placehold.co/1920x1080/D0F0E0/000000?text=Carregando+Vídeo+da+Clínica",
-    heroTitle: "A Sua Clínica, Mais Inteligente.",
-    heroSubtitle: "Inovação e eficiência para a gestão médica, com um toque de excelência.",
-    heroButtonText: "Saiba Mais",
-    heroButtonLink: "#sobre",
-    clinicName: "Clínica Inteligente",
-    navLinks: [
-      { href: "#sobre", text: "Sobre Nós" },
-      { href: "#servicos", text: "Serviços" },
-      { href: "#app", text: "App Interativo" },
-      { href: "#teleconsultas", text: "Teleconsultas" },
-      { href: "#medico24hs", text: "Médico 24h" },
-      { href: "#ia", text: "Inteligência Artificial" },
-      { href: "#planos", text: "Planos" },
-      { href: "#exames", text: "Meus Exames" },
-      { href: "#seguranca", text: "Segurança" }, // Novo link de navegação
-      { href: "#contato", text: "Contacto" },
-    ],
-    aboutImage: "https://placehold.co/1200x400/D0F0E0/000000?text=Médicos+Interagindo+na+Clínica",
-    servicesImage: "https://placehold.co/1200x400/E0F8FF/000000?text=Equipamentos+Modernos",
-    teleconsultasImage: "https://placehold.co/1200x400/D0F0E0/000000?text=Médicos+em+Teleconsulta",
-    medico24hsImage: "https://placehold.co/1200x400/F0F8FF/000000?text=Médicos+de+Plantão",
-    appImage1: "https://placehold.co/250x500/ADD8E6/000000?text=Tela+App+1",
-    appImage2: "https://placehold.co/250x500/87CEEB/000000?text=Tela+App+2",
-    contactImage: "https://placehold.co/1200x400/E0F8FF/000000?text=Atendimento+Personalizado",
-  });
+          const handleSendMessage = async () => {
+            if (input.trim() === '') return;
 
-  useEffect(() => {
-    // Initialize Firebase only once
-    if (!app) {
-      app = initializeApp(firebaseConfig);
-      db = getFirestore(app);
-      auth = getAuth(app);
+            const userMessage = { sender: 'user', text: input };
+            setMessages((prev) => [...prev, userMessage]);
+            setInput('');
+            setIsLoading(true);
 
-      // Listen for authentication state changes
-      onAuthStateChanged(auth, async (user) => {
-        if (user) {
-          setUserId(user.uid);
-        } else {
-          // Sign in anonymously if no user is authenticated
-          try {
-            if (typeof __initial_auth_token !== 'undefined') {
-              await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-              await signInAnonymously(auth);
+            const prompt = `Você é um assistente de saúde. Com base nos seguintes sintomas, forneça informações gerais e orientações sobre quando procurar um médico. NÃO forneça diagnósticos. Sintomas: ${userMessage.text}`;
+            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+            const apiKey = ""; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            try {
+              const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              });
+              const result = await response.json();
+              const aiResponseText = result.candidates[0].content.parts[0].text;
+              setMessages((prev) => [...prev, { sender: 'ai', text: aiResponseText }]);
+            } catch (error) {
+              console.error("Erro na API Gemini:", error);
+              setMessages((prev) => [...prev, { sender: 'ai', text: 'Desculpe, ocorreu um erro. Tente novamente.' }]);
+            } finally {
+              setIsLoading(false);
             }
-            setUserId(auth.currentUser?.uid || crypto.randomUUID()); // Ensure userId is set after sign-in
-          } catch (error) {
-            console.error("Erro ao autenticar:", error);
-            setUserId(crypto.randomUUID()); // Fallback to a random ID if auth fails
-          }
-        }
-        setIsAuthReady(true);
-      });
-    }
+          };
 
-    // Load site configuration from Firestore
-    const loadSiteConfig = async () => {
-      if (!db) return;
-      // Caminho corrigido para ter um número par de segmentos: coleção/documento/coleção/documento
-      const configDocRef = doc(db, `artifacts/${appId}/public/data/siteConfigurations/mainDoc`);
-      const configSnap = await getDoc(configDocRef);
-      if (configSnap.exists()) {
-        setSiteConfig(prevConfig => ({ ...prevConfig, ...configSnap.data() }));
-      } else {
-        // Se nenhuma configuração for encontrada, cria uma padrão
-        await setDoc(configDocRef, siteConfig);
-      }
-    };
-
-    if (isAuthReady) { // Load config once auth is ready
-      loadSiteConfig();
-    }
-  }, [isAuthReady]);
-
-  // Função para atualizar a configuração do site no Firestore (simulando um painel de admin)
-  const updateSiteConfig = async (key, value) => {
-    if (!db) {
-      console.error("Firestore não inicializado.");
-      return;
-    }
-    // Caminho corrigido para ter um número par de segmentos: coleção/documento/coleção/documento
-    const configDocRef = doc(db, `artifacts/${appId}/public/data/siteConfigurations/main`);
-    try {
-      await updateDoc(configDocRef, { [key]: value });
-      setSiteConfig(prevConfig => ({ ...prevConfig, [key]: value }));
-      console.log(`Configuração '${key}' atualizada para: ${value}`);
-    } catch (e) {
-      console.error("Erro ao atualizar configuração:", e);
-    }
-  };
-
-
-  if (!isAuthReady) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-white">
-        <p className="text-2xl text-emerald-700 font-semibold">Carregando...</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-white font-sans text-gray-800">
-      {/* Seção de Entrada com Vídeo */}
-      <HeroSection siteConfig={siteConfig} />
-
-      {/* Barra de Navegação */}
-      <Navbar userId={userId} siteConfig={siteConfig} />
-
-      {/* Conteúdo Principal */}
-      <main className="container mx-auto px-4 py-16">
-        <section id="sobre" className="mb-24 bg-white p-12 rounded-3xl shadow-xl border border-gray-50">
-          <h2 className="text-5xl font-extrabold text-center text-emerald-800 mb-10 leading-tight">Sobre a Clínica</h2>
-          <p className="text-xl text-center max-w-4xl mx-auto leading-relaxed text-gray-700">
-            A nossa clínica dedica-se a oferecer excelência em cuidados de saúde, combinando tecnologia de ponta com um atendimento humano e personalizado. Facilitamos a gestão para profissionais e a experiência para os pacientes, elevando o padrão da medicina moderna.
-          </p>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10 mt-16">
-            <FeatureCard
-              title="Administração Simplificada"
-              description="Ferramentas intuitivas para gerir a sua clínica de forma eficiente e sem complicações."
-              icon="⚙️"
-            />
-            <FeatureCard
-              title="Gestão Financeira Completa"
-              description="Controle pagamentos de funcionários e médicos, e acompanhe o fluxo de caixa com precisão."
-              icon="💰"
-            />
-            <FeatureCard
-              title="Cadastro de Pacientes Intuitivo"
-              description="Mantenha um registo detalhado e seguro de todos os seus pacientes, sempre à mão."
-              icon="📋"
-            />
-            <FeatureCard
-              title="Agendamento Inteligente"
-              description="Facilite o agendamento de consultas e exames online, com lembretes automáticos."
-              icon="🗓️"
-            />
-            <FeatureCard
-              title="Resultados de Exames Online"
-              description="Acesso rápido e seguro aos resultados de exames para pacientes e médicos, a qualquer hora."
-              icon="🔬"
-            />
-            <FeatureCard
-              title="Consultas Online com Alta Resolução"
-              description="Plataforma para teleconsultas com qualidade de vídeo superior e recursos avançados de inteligência artificial."
-              icon="💻"
-            />
-          </div>
-          {/* Nova imagem de médicos interagindo */}
-          <div className="mt-16 text-center">
-            <img
-              src={siteConfig.aboutImage}
-              alt="Médicos Interagindo na Clínica"
-              className="w-full max-w-4xl mx-auto rounded-2xl shadow-lg border border-gray-100"
-            />
-          </div>
-        </section>
-
-        <section id="servicos" className="mb-24 bg-gradient-to-br from-emerald-50 to-white p-12 rounded-3xl shadow-xl border border-emerald-100">
-          <h2 className="text-5xl font-extrabold text-center text-emerald-800 mb-10 leading-tight">Os Nossos Serviços</h2>
-          <div className="grid md:grid-cols-2 gap-12">
-            <div>
-              <h3 className="text-3xl font-bold text-emerald-700 mb-6 border-b-2 border-emerald-200 pb-2">Para a Clínica</h3>
-              <ul className="list-disc list-inside text-lg space-y-3 text-gray-700">
-                <li>Gestão de prontuários eletrónicos seguros e acessíveis.</li>
-                <li>Controlo de stock de medicamentos e insumos com alertas inteligentes.</li>
-                <li>Relatórios financeiros e de desempenho detalhados para decisões estratégicas.</li>
-                <li>Integração fluida com os principais sistemas de pagamento.</li>
-              </ul>
+          return (
+            <div className="max-w-2xl mx-auto bg-emerald-50 p-8 rounded-2xl shadow-inner border border-emerald-100">
+              <h3 className="text-3xl font-bold text-center text-emerald-700 mb-6">Orientador de Sintomas ✨</h3>
+              <div className="h-72 overflow-y-auto mb-6 p-4 bg-white rounded-lg border">
+                {messages.map((msg, index) => (
+                  <div key={index} className={`mb-3 p-4 rounded-xl max-w-[85%] text-lg ${msg.sender === 'user' ? 'bg-emerald-200 ml-auto' : 'bg-gray-100'}`}>
+                    {msg.text}
+                  </div>
+                ))}
+                {isLoading && <div className="p-4 rounded-xl bg-gray-100">A pensar...</div>}
+              </div>
+              <div className="flex">
+                <input type="text" className="flex-grow px-5 py-3 border rounded-l-xl" placeholder="Ex: dor de cabeça e febre" value={input} onChange={(e) => setInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()} disabled={isLoading} />
+                <button onClick={handleSendMessage} className="bg-emerald-700 text-white font-bold py-3 px-8 rounded-r-xl" disabled={isLoading}>Perguntar</button>
+              </div>
             </div>
-            <div>
-              <h3 className="text-3xl font-bold text-emerald-700 mb-6 border-b-2 border-emerald-200 pb-2">Para os Pacientes</h3>
-              <ul className="list-disc list-inside text-lg space-y-3 text-gray-700">
-                <li>Agendamento online 24/7, fácil e rápido.</li>
-                <li>Acesso seguro e confidencial a resultados de exames.</li>
-                <li>Histórico completo de consultas e procedimentos na palma da mão.</li>
-                <li>Lembretes de agendamento automáticos para nunca perder uma consulta.</li>
-                <li>Plataforma intuitiva para teleconsultas (em desenvolvimento).</li>
-              </ul>
+          );
+        };
+
+        // --- Componente AISection ---
+        const AISection = () => (
+          <section id="ia" className="mb-24 py-16 bg-white p-12 rounded-3xl shadow-xl">
+            <h2 className="text-5xl font-extrabold text-center text-emerald-800 mb-10">Inteligência Artificial na Sua Clínica</h2>
+            <p className="text-xl text-center max-w-4xl mx-auto leading-relaxed mb-12 text-gray-700">
+                A IA é a sua aliada para otimizar processos, personalizar o atendimento e impulsionar o desempenho da sua clínica.
+            </p>
+            <div className="grid md:grid-cols-2 gap-12 mb-16">
+                <FeatureCard title="Otimização de Processos" description="Automatize tarefas, otimize agendamentos e gira o fluxo de trabalho com algoritmos inteligentes." icon="🧠" />
+                <FeatureCard title="Análise de Dados Avançada" description="Obtenha insights valiosos sobre o desempenho da clínica e tendências de pacientes." icon="📊" />
             </div>
-          </div>
-          {/* Nova imagem para a seção de serviços */}
-          <div className="mt-16 text-center">
-            <img
-              src={siteConfig.servicesImage}
-              alt="Equipamentos Modernos"
-              className="w-full max-w-4xl mx-auto rounded-2xl shadow-lg border border-gray-100"
-            />
-          </div>
-        </section>
+            <AIChatBot />
+          </section>
+        );
 
-        {/* Nova Seção: Aplicativo Interativo Integrado */}
-        <InteractiveAppSection siteConfig={siteConfig} />
-
-        {/* Nova Seção: Teleconsultas de Alta Resolução */}
-        <HighResolutionConsultationSection siteConfig={siteConfig} />
-
-        {/* Nova Seção: Médico24hs */}
-        <Medico24hsSection siteConfig={siteConfig} />
-
-        {/* Seção de Inteligência Artificial */}
-        <AISection />
-
-        {/* Nova Seção: Planos de Assinatura */}
-        <SubscriptionPlans />
-
-        {/* Nova Seção: Meus Exames (Acesso do Paciente) */}
-        <PatientExamsSection userId={userId} />
-
-        {/* Nova Seção: Segurança 100% */}
-        <SecuritySection />
-
-        <section id="contato" className="mb-24 bg-white p-12 rounded-3xl shadow-xl border border-gray-50">
-          <h2 className="text-5xl font-extrabold text-center text-emerald-800 mb-10 leading-tight">Entre em Contacto</h2>
-          <form className="max-w-xl mx-auto space-y-8">
-            <div>
-              <label htmlFor="nome" className="block text-lg font-semibold text-gray-700 mb-2">Nome Completo</label>
-              <input
-                type="text"
-                id="nome"
-                name="nome"
-                className="mt-1 block w-full px-5 py-3 border border-gray-200 rounded-xl shadow-sm focus:ring-emerald-400 focus:border-emerald-400 text-lg transition duration-300"
-                placeholder="O seu nome"
-              />
+        // --- Componente InteractiveAppSection ---
+        const InteractiveAppSection = ({ siteConfig }) => (
+          <section id="app" className="mb-24 py-16 bg-gradient-to-br from-purple-50 to-pink-50 p-12 rounded-3xl shadow-xl">
+            <h2 className="text-5xl font-extrabold text-center text-emerald-800 mb-10">O Nosso Aplicativo Interativo</h2>
+            <p className="text-xl text-center max-w-4xl mx-auto leading-relaxed mb-12 text-gray-700">
+                Leve a gestão da sua clínica e o atendimento ao paciente para a palma da sua mão com o nosso aplicativo móvel.
+            </p>
+            <div className="flex flex-col md:flex-row items-center justify-center gap-16">
+                <div className="md:w-1/2">
+                    <h3 className="text-3xl font-bold text-emerald-700 mb-6">Funcionalidades na Ponta dos Dedos</h3>
+                    <ul className="list-disc list-inside text-lg space-y-4 text-gray-700">
+                        <li>Agendamento Simplificado e intuitivo.</li>
+                        <li>Acesso Rápido a resultados de exames.</li>
+                        <li>Teleconsultas Integradas de alta resolução.</li>
+                        <li>Notificações Personalizadas e lembretes.</li>
+                    </ul>
+                </div>
+                <div className="md:w-1/2 flex justify-center">
+                    <img src={siteConfig.appImage1} alt="Tela do aplicativo 1" className="w-48 h-96 object-cover rounded-3xl shadow-2xl transform rotate-3 -mr-8 z-10"/>
+                    <img src={siteConfig.appImage2} alt="Tela do aplicativo 2" className="w-48 h-96 object-cover rounded-3xl shadow-2xl transform -rotate-3 z-0"/>
+                </div>
             </div>
-            <div>
-              <label htmlFor="email" className="block text-lg font-semibold text-gray-700 mb-2">Email</label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                className="mt-1 block w-full px-5 py-3 border border-gray-200 rounded-xl shadow-sm focus:ring-emerald-400 focus:border-emerald-400 text-lg transition duration-300"
-                placeholder="o.seu.email@exemplo.com"
-              />
-            </div>
-            <div>
-              <label htmlFor="mensagem" className="block text-lg font-semibold text-gray-700 mb-2">Mensagem</label>
-              <textarea
-                id="mensagem"
-                name="mensagem"
-                rows="6"
-                className="mt-1 block w-full px-5 py-3 border border-gray-200 rounded-xl shadow-sm focus:ring-emerald-400 focus:border-emerald-400 text-lg transition duration-300"
-                placeholder="A sua mensagem..."
-              ></textarea>
-            </div>
-            <button
-              type="submit"
-              className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-emerald-300"
-            >
-              Enviar Mensagem
-            </button>
-          </form>
-          {/* Nova imagem para a seção de contato */}
-          <div className="mt-16 text-center">
-            <img
-              src={siteConfig.contactImage}
-              alt="Atendimento Personalizado"
-              className="w-full max-w-4xl mx-auto rounded-2xl shadow-lg border border-gray-100"
-            />
-          </div>
-        </section>
+          </section>
+        );
 
-        {/* Seção de Painel de Administração (para edição de conteúdo) */}
-        <AdminPanel updateSiteConfig={updateSiteConfig} siteConfig={siteConfig} />
-      </main>
+        // --- Componente SecuritySection ---
+        const SecuritySection = () => (
+            <section id="seguranca" className="mb-24 py-16 bg-gradient-to-br from-blue-50 to-indigo-50 p-12 rounded-3xl shadow-xl">
+                <h2 className="text-5xl font-extrabold text-center text-emerald-800 mb-10">Sua Segurança é Nossa Prioridade</h2>
+                <p className="text-xl text-center max-w-4xl mx-auto leading-relaxed mb-12 text-gray-700">
+                    Nossa plataforma é construída com as mais avançadas tecnologias para garantir a proteção completa das suas informações.
+                </p>
+                <div className="grid md:grid-cols-3 gap-12">
+                    <FeatureCard title="Criptografia Avançada" description="Todos os seus dados são criptografados de ponta a ponta." icon="🔒" />
+                    <FeatureCard title="Conformidade com LGPD" description="Seguimos rigorosamente as diretrizes da Lei Geral de Proteção de Dados." icon="🛡️" />
+                    <FeatureCard title="Auditorias Constantes" description="Nossos sistemas passam por auditorias de segurança regulares." icon="✅" />
+                </div>
+            </section>
+        );
 
-      {/* Rodapé Elegante */}
-      <Footer siteConfig={siteConfig} />
-    </div>
-  );
-};
+        // --- Componente PatientExamsSection (Seção de Exames do Paciente) ---
+        const PatientExamsSection = ({ userId }) => {
+            const [exams, setExams] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
 
-export default App; // Exporta o componente App como padrão
+            useEffect(() => {
+                if (!db || !userId) {
+                    setLoading(false);
+                    return;
+                }
+                setLoading(true);
+                setError(null);
+                const examsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/exams`);
+                const unsubscribe = onSnapshot(examsCollectionRef, (snapshot) => {
+                    const patientExams = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    patientExams.sort((a, b) => (b.timestamp?.toDate() || 0) - (a.timestamp?.toDate() || 0));
+                    setExams(patientExams);
+                    setLoading(false);
+                }, (err) => {
+                    console.error("Erro ao buscar exames:", err);
+                    setError("Não foi possível carregar os exames.");
+                    setLoading(false);
+                });
+                return () => unsubscribe();
+            }, [userId]);
+
+            const handleAddSampleExam = async () => {
+                if (!db || !userId) return;
+                try {
+                    const newExam = {
+                        examType: `Exame de Rotina ${Math.floor(Math.random() * 100)}`,
+                        result: "Resultado simulado: Tudo dentro dos parâmetros normais.",
+                        timestamp: new Date(),
+                        patientId: userId,
+                        clinicNotes: "Acompanhamento de rotina.",
+                    };
+                    await addDoc(collection(db, `artifacts/${appId}/users/${userId}/exams`), newExam);
+                } catch (e) {
+                    console.error("Erro ao adicionar exame de amostra: ", e);
+                }
+            };
+
+            return (
+                <section id="exames" className="mb-24 py-16 bg-white p-12 rounded-3xl shadow-xl border border-gray-50">
+                    <h2 className="text-5xl font-extrabold text-center text-emerald-800 mb-10 leading-tight">Meus Exames</h2>
+                    <p className="text-xl text-center max-w-4xl mx-auto leading-relaxed text-gray-700">Acesse seus resultados de exames em tempo real, com segurança e privacidade.</p>
+                    <div className="text-center my-8">
+                        <p className="text-md text-emerald-700 font-semibold mt-4">Seu ID de Usuário: <span className="font-normal text-gray-800 bg-gray-100 p-1 rounded">{userId}</span></p>
+                        <button onClick={handleAddSampleExam} className="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-emerald-300">
+                            Adicionar Exame de Amostra
+                        </button>
+                    </div>
+                    {loading && <p className="text-center text-emerald-600 text-xl">Carregando seus exames...</p>}
+                    {error && <p className="text-center text-red-600 text-xl">{error}</p>}
+                    {!loading && exams.length === 0 && !error && <p className="text-center text-gray-600 text-xl">Nenhum exame encontrado. Adicione um exame de amostra!</p>}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-12">
+                        {exams.map((exam) => (
+                            <div key={exam.id} className="bg-emerald-50 p-6 rounded-2xl shadow-md border border-emerald-100">
+                                <h3 className="text-2xl font-bold text-emerald-800 mb-3">{exam.examType}</h3>
+                                <p className="text-gray-700 mb-2"><span className="font-semibold">Resultado:</span> {exam.result}</p>
+                                <p className="text-gray-600 text-sm"><span className="font-semibold">Data:</span> {exam.timestamp ? new Date(exam.timestamp.toDate()).toLocaleString() : 'N/A'}</p>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            );
+        };
+
+        // --- Componente AdminPanel (Painel de Administração) ---
+        const AdminPanel = ({ updateSiteConfig, siteConfig }) => {
+            const [config, setConfig] = useState(siteConfig);
+
+            useEffect(() => {
+                setConfig(siteConfig);
+            }, [siteConfig]);
+
+            const handleChange = (key, value) => {
+                setConfig(prev => ({ ...prev, [key]: value }));
+            };
+
+            const handleBlur = (key, value) => {
+                updateSiteConfig(key, value);
+            };
+
+            return (
+                <section id="admin-panel" className="mb-24 py-16 bg-gray-100 p-12 rounded-3xl shadow-xl border border-gray-200">
+                    <h2 className="text-5xl font-extrabold text-center text-emerald-800 mb-10 leading-tight">Painel de Administração</h2>
+                    <p className="text-xl text-center max-w-4xl mx-auto leading-relaxed mb-12 text-gray-700">Edite o conteúdo do site em tempo real. As alterações são salvas automaticamente.</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+                        <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 space-y-4">
+                            <h3 className="text-2xl font-bold text-emerald-700">Seção Principal (Hero)</h3>
+                            <div>
+                                <label className="block text-gray-700 text-sm font-bold mb-2">URL do Vídeo:</label>
+                                <input type="text" value={config.heroVideoUrl || ''} onChange={(e) => handleChange('heroVideoUrl', e.target.value)} onBlur={(e) => handleBlur('heroVideoUrl', e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"/>
+                            </div>
+                            <div>
+                                <label className="block text-gray-700 text-sm font-bold mb-2">Título Principal:</label>
+                                <input type="text" value={config.heroTitle || ''} onChange={(e) => handleChange('heroTitle', e.target.value)} onBlur={(e) => handleBlur('heroTitle', e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"/>
+                            </div>
+                        </div>
+                        <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 space-y-4">
+                            <h3 className="text-2xl font-bold text-emerald-700">Configurações Gerais</h3>
+                            <div>
+                                <label className="block text-gray-700 text-sm font-bold mb-2">Nome da Clínica:</label>
+                                <input type="text" value={config.clinicName || ''} onChange={(e) => handleChange('clinicName', e.target.value)} onBlur={(e) => handleBlur('clinicName', e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"/>
+                            </div>
+                            <div>
+                                <label className="block text-gray-700 text-sm font-bold mb-2">Imagem da Seção "Sobre":</label>
+                                <input type="text" value={config.aboutImage || ''} onChange={(e) => handleChange('aboutImage', e.target.value)} onBlur={(e) => handleBlur('aboutImage', e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"/>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            );
+        };
+        
+        // --- Componente Footer (Rodapé) ---
+        const Footer = ({ siteConfig }) => (
+            <footer className="bg-gray-900 text-white py-14 px-4 rounded-t-3xl">
+                <div className="container mx-auto grid grid-cols-1 md:grid-cols-3 gap-12 border-b border-gray-700 pb-10 mb-10">
+                    <div>
+                        <h4 className="text-3xl font-extrabold text-emerald-400 mb-5">{siteConfig.clinicName || "Clínica Inteligente"}</h4>
+                        <p className="text-gray-400 leading-relaxed text-lg">Inovando a gestão de clínicas e a experiência do paciente.</p>
+                    </div>
+                    <div>
+                        <h4 className="text-3xl font-extrabold text-emerald-400 mb-5">Links Rápidos</h4>
+                        <ul className="space-y-3">
+                            {siteConfig.navLinks && siteConfig.navLinks.map((link, index) => (
+                                <li key={index}><a href={link.href} className="text-gray-400 hover:text-emerald-300 transition duration-300 text-lg">{link.text}</a></li>
+                            ))}
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 className="text-3xl font-extrabold text-emerald-400 mb-5">Fale Conosco</h4>
+                        <p className="text-gray-400 mb-3 text-lg">Rua da Inovação, 123, Cidade Futura - BR</p>
+                        <p className="text-gray-400 text-lg">contacto@clinicainteligente.com</p>
+                    </div>
+                </div>
+                <div className="text-center text-gray-500 text-base mt-8">
+                    &copy; {new Date().getFullYear()} Clínica Inteligente. Todos os direitos reservados.
+                </div>
+            </footer>
+        );
+
+        // --- Componente Principal da Aplicação ---
+        const App = () => {
+            const [userId, setUserId] = useState(null);
+            const [isAuthReady, setIsAuthReady] = useState(false);
+            const [siteConfig, setSiteConfig] = useState({
+                heroVideoUrl: "https://assets.mixkit.co/videos/preview/mixkit-receptionist-at-the-reception-of-a-medical-clinic-40782-large.mp4",
+                heroPosterUrl: "https://placehold.co/1920x1080/D0F0E0/000000?text=Carregando+Vídeo",
+                heroTitle: "A Sua Clínica, Mais Inteligente.",
+                heroSubtitle: "Inovação e eficiência para a gestão médica.",
+                heroButtonText: "Saiba Mais",
+                heroButtonLink: "#sobre",
+                clinicName: "Clínica Inteligente",
+                navLinks: [
+                    { href: "#sobre", text: "Sobre" },
+                    { href: "#servicos", text: "Serviços" },
+                    { href: "#app", text: "App" },
+                    { href: "#ia", text: "IA" },
+                    { href: "#planos", text: "Planos" },
+                    { href: "#exames", text: "Exames" },
+                    { href: "#seguranca", text: "Segurança" },
+                    { href: "#contato", text: "Contacto" },
+                ],
+                aboutImage: "https://placehold.co/1200x400/D0F0E0/000000?text=Médicos+Interagindo",
+                appImage1: "https://placehold.co/250x500/ADD8E6/000000?text=Tela+App+1",
+                appImage2: "https://placehold.co/250x500/87CEEB/000000?text=Tela+App+2",
+            });
+
+            useEffect(() => {
+                if (Object.keys(firebaseConfig).length === 0) {
+                    console.warn("Configuração do Firebase não encontrada. Usando modo offline.");
+                    setIsAuthReady(true);
+                    setUserId(crypto.randomUUID());
+                    return;
+                }
+                
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        setUserId(user.uid);
+                    } else {
+                        try {
+                            const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                            if (token) {
+                                await signInWithCustomToken(auth, token);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                            // This ensures userId is set after anonymous or custom token sign-in
+                            setUserId(auth.currentUser?.uid);
+                        } catch (error) {
+                            console.error("Erro na autenticação:", error);
+                            setUserId(crypto.randomUUID());
+                        }
+                    }
+                    setIsAuthReady(true);
+                });
+            }, []);
+
+            useEffect(() => {
+                if (!isAuthReady || !db) return;
+
+                const configDocRef = doc(db, `artifacts/${appId}/public/data/siteConfigurations/mainDoc`);
+                
+                const unsubscribe = onSnapshot(configDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        setSiteConfig(prevConfig => ({ ...prevConfig, ...docSnap.data() }));
+                    } else {
+                        // If no config found in Firestore, create one with default values
+                        setDoc(configDocRef, siteConfig);
+                    }
+                }, (error) => {
+                    console.error("Erro ao carregar configuração do site:", error);
+                });
+
+                return () => unsubscribe();
+            }, [isAuthReady]);
+
+            const updateSiteConfig = async (key, value) => {
+                if (!db) return;
+                const configDocRef = doc(db, `artifacts/${appId}/public/data/siteConfigurations/mainDoc`);
+                try {
+                    // Use setDoc with merge to create or update the document
+                    await setDoc(configDocRef, { [key]: value }, { merge: true });
+                } catch (e) {
+                    console.error("Erro ao atualizar configuração:", e);
+                }
+            };
+
+            if (!isAuthReady) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center bg-emerald-50">
+                        <p className="text-2xl text-emerald-700 font-semibold">A carregar a aplicação...</p>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-white font-sans text-gray-800">
+                    <HeroSection siteConfig={siteConfig} />
+                    <Navbar userId={userId} siteConfig={siteConfig} />
+                    <main className="container mx-auto px-4 py-16">
+                        <section id="sobre" className="mb-24 bg-white p-12 rounded-3xl shadow-xl border border-gray-50">
+                            <h2 className="text-5xl font-extrabold text-center text-emerald-800 mb-10">Sobre Nós</h2>
+                            <p className="text-xl text-center max-w-4xl mx-auto leading-relaxed text-gray-700">
+                                A nossa clínica dedica-se a oferecer excelência em cuidados de saúde, combinando tecnologia de ponta com um atendimento humano e personalizado.
+                            </p>
+                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10 mt-16">
+                                <FeatureCard title="Administração Simplificada" description="Ferramentas intuitivas para gerir a sua clínica de forma eficiente." icon="⚙️" />
+                                <FeatureCard title="Gestão Financeira" description="Controle pagamentos e acompanhe o fluxo de caixa com precisão." icon="💰" />
+                                <FeatureCard title="Cadastro de Pacientes" description="Mantenha um registo detalhado e seguro de todos os seus pacientes." icon="📋" />
+                                <FeatureCard title="Agendamento Inteligente" description="Facilite o agendamento de consultas e exames online." icon="🗓️" />
+                                <FeatureCard title="Resultados Online" description="Acesso rápido e seguro aos resultados de exames para pacientes e médicos." icon="🔬" />
+                                <FeatureCard title="Consultas Online" description="Plataforma para teleconsultas com qualidade de vídeo superior." icon="💻" />
+                            </div>
+                            <div className="mt-16 text-center">
+                                <img src={siteConfig.aboutImage} alt="Médicos na clínica" className="w-full max-w-4xl mx-auto rounded-2xl shadow-lg border border-gray-100" />
+                            </div>
+                        </section>
+                        <section id="servicos" className="mb-24 bg-gradient-to-br from-emerald-50 to-white p-12 rounded-3xl shadow-xl border border-emerald-100">
+                            <h2 className="text-5xl font-extrabold text-center text-emerald-800 mb-10">Os Nossos Serviços</h2>
+                            <div className="grid md:grid-cols-2 gap-12 text-lg text-gray-700">
+                                <div>
+                                    <h3 className="text-3xl font-bold text-emerald-700 mb-4">Para a Clínica</h3>
+                                    <ul className="list-disc list-inside space-y-2">
+                                        <li>Gestão de prontuários eletrónicos seguros.</li>
+                                        <li>Controlo de stock de medicamentos e insumos.</li>
+                                        <li>Relatórios financeiros e de desempenho.</li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h3 className="text-3xl font-bold text-emerald-700 mb-4">Para os Pacientes</h3>
+                                    <ul className="list-disc list-inside space-y-2">
+                                        <li>Agendamento online 24/7, fácil e rápido.</li>
+                                        <li>Acesso seguro a resultados de exames.</li>
+                                        <li>Histórico completo de consultas na palma da mão.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </section>
+                        <InteractiveAppSection siteConfig={siteConfig} />
+                        <AISection />
+                        <SubscriptionPlans />
+                        <PatientExamsSection userId={userId} />
+                        <SecuritySection />
+                        <section id="contato" className="mb-24 bg-white p-12 rounded-3xl shadow-xl border border-gray-50">
+                            <h2 className="text-5xl font-extrabold text-center text-emerald-800 mb-10">Entre em Contacto</h2>
+                            <form className="max-w-xl mx-auto space-y-6">
+                                <div>
+                                    <label htmlFor="nome" className="block text-lg font-semibold text-gray-700">Nome</label>
+                                    <input type="text" id="nome" className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm"/>
+                                </div>
+                                <div>
+                                    <label htmlFor="email" className="block text-lg font-semibold text-gray-700">Email</label>
+                                    <input type="email" id="email" className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm"/>
+                                </div>
+                                <div>
+                                    <label htmlFor="mensagem" className="block text-lg font-semibold text-gray-700">Mensagem</label>
+                                    <textarea id="mensagem" rows="5" className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm"></textarea>
+                                </div>
+                                <button type="submit" className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition duration-300 transform hover:scale-105">
+                                    Enviar Mensagem
+                                </button>
+                            </form>
+                        </section>
+                        <AdminPanel updateSiteConfig={updateSiteConfig} siteConfig={siteConfig} />
+                    </main>
+                    <Footer siteConfig={siteConfig} />
+                </div>
+            );
+        };
+
+        // Renderiza a aplicação React no elemento #root
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
