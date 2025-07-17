@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -367,27 +366,24 @@
           </section>
         );
 
-        // --- Componente InteractiveAppSection ---
-        const InteractiveAppSection = ({ siteConfig }) => (
-          <section id="app" className="mb-24 py-16 bg-gradient-to-br from-purple-50 to-pink-50 p-12 rounded-3xl shadow-xl">
-            <h2 className="text-5xl font-extrabold text-center text-emerald-800 mb-10">O Nosso Aplicativo Interativo</h2>
+        // --- Componente VideoSection (Atualizado) ---
+        const VideoSection = ({ siteConfig }) => (
+          <section id="video" className="mb-24 py-16 bg-gradient-to-br from-purple-50 to-pink-50 p-12 rounded-3xl shadow-xl">
+            <h2 className="text-5xl font-extrabold text-center text-emerald-800 mb-10">
+                {siteConfig.videoSectionTitle || "Veja a Nossa Clínica em Ação"}
+            </h2>
             <p className="text-xl text-center max-w-4xl mx-auto leading-relaxed mb-12 text-gray-700">
-                Leve a gestão da sua clínica e o atendimento ao paciente para a palma da sua mão com o nosso aplicativo móvel.
+                {siteConfig.videoSectionSubtitle || "Explore as nossas instalações e conheça a nossa equipa através deste vídeo de apresentação."}
             </p>
-            <div className="flex flex-col md:flex-row items-center justify-center gap-16">
-                <div className="md:w-1/2">
-                    <h3 className="text-3xl font-bold text-emerald-700 mb-6">Funcionalidades na Ponta dos Dedos</h3>
-                    <ul className="list-disc list-inside text-lg space-y-4 text-gray-700">
-                        <li>Agendamento Simplificado e intuitivo.</li>
-                        <li>Acesso Rápido a resultados de exames.</li>
-                        <li>Teleconsultas Integradas de alta resolução.</li>
-                        <li>Notificações Personalizadas e lembretes.</li>
-                    </ul>
-                </div>
-                <div className="md:w-1/2 flex justify-center">
-                    <img src={siteConfig.appImage1} alt="Ecrã da aplicação 1" className="w-48 h-96 object-cover rounded-3xl shadow-2xl transform rotate-3 -mr-8 z-10"/>
-                    <img src={siteConfig.appImage2} alt="Ecrã da aplicação 2" className="w-48 h-96 object-cover rounded-3xl shadow-2xl transform -rotate-3 z-0"/>
-                </div>
+            <div className="max-w-4xl mx-auto rounded-2xl shadow-2xl overflow-hidden border-4 border-white bg-black">
+                <video
+                    key={siteConfig.videoSectionUrl}
+                    className="w-full h-full"
+                    controls
+                    src={siteConfig.videoSectionUrl}
+                >
+                    O seu navegador não suporta a tag de vídeo.
+                </video>
             </div>
           </section>
         );
@@ -487,68 +483,58 @@
             const handleChange = (key, value) => {
                 setConfig(prev => ({ ...prev, [key]: value }));
             };
+            
+            const handleBlur = (key, value) => {
+                updateSiteConfig(key, value);
+            };
 
-            // Função para lidar com o pressionar de tecla, salvando ao pressionar 'Enter'
             const handleKeyPress = (e, key, value) => {
                 if (e.key === 'Enter') {
                     updateSiteConfig(key, value);
-                    e.target.blur(); // Remove o foco do input após salvar
+                    e.target.blur();
                 }
             };
 
             return (
                 <section id="admin-panel" className="mb-24 py-16 bg-gray-100 p-12 rounded-3xl shadow-xl border border-gray-200">
                     <h2 className="text-5xl font-extrabold text-center text-emerald-800 mb-10 leading-tight">Painel de Administração</h2>
-                    <p className="text-xl text-center max-w-4xl mx-auto leading-relaxed mb-12 text-gray-700">Edite o conteúdo do site em tempo real. As alterações são guardadas automaticamente.</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+                    <p className="text-xl text-center max-w-4xl mx-auto leading-relaxed mb-12 text-gray-700">Edite o conteúdo do site em tempo real. As alterações são guardadas automaticamente ao sair do campo ou ao pressionar Enter.</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
                         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 space-y-4">
                             <h3 className="text-2xl font-bold text-emerald-700">Seção Principal (Hero)</h3>
                             <div>
-                                <label className="block text-gray-700 text-sm font-bold mb-2">URL do Vídeo:</label>
-                                <input 
-                                    type="text" 
-                                    value={config.heroVideoUrl || ''} 
-                                    onChange={(e) => handleChange('heroVideoUrl', e.target.value)} 
-                                    onBlur={(e) => handleBlur('heroVideoUrl', e.target.value)} 
-                                    onKeyPress={(e) => handleKeyPress(e, 'heroVideoUrl', e.target.value)} // Adicionado onKeyPress
-                                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
-                                />
+                                <label className="block text-gray-700 text-sm font-bold mb-2">URL do Vídeo de Fundo:</label>
+                                <input type="text" value={config.heroVideoUrl || ''} onChange={(e) => handleChange('heroVideoUrl', e.target.value)} onBlur={(e) => handleBlur('heroVideoUrl', e.target.value)} onKeyPress={(e) => handleKeyPress(e, 'heroVideoUrl', e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"/>
                             </div>
                             <div>
                                 <label className="block text-gray-700 text-sm font-bold mb-2">Título Principal:</label>
-                                <input 
-                                    type="text" 
-                                    value={config.heroTitle || ''} 
-                                    onChange={(e) => handleChange('heroTitle', e.target.value)} 
-                                    onBlur={(e) => handleBlur('heroTitle', e.target.value)} 
-                                    onKeyPress={(e) => handleKeyPress(e, 'heroTitle', e.target.value)} // Adicionado onKeyPress
-                                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
-                                />
+                                <input type="text" value={config.heroTitle || ''} onChange={(e) => handleChange('heroTitle', e.target.value)} onBlur={(e) => handleBlur('heroTitle', e.target.value)} onKeyPress={(e) => handleKeyPress(e, 'heroTitle', e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"/>
+                            </div>
+                        </div>
+                        <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 space-y-4">
+                            <h3 className="text-2xl font-bold text-emerald-700">Seção de Vídeo</h3>
+                            <div>
+                                <label className="block text-gray-700 text-sm font-bold mb-2">Caminho do Vídeo:</label>
+                                <input type="text" value={config.videoSectionUrl || ''} onChange={(e) => handleChange('videoSectionUrl', e.target.value)} onBlur={(e) => handleBlur('videoSectionUrl', e.target.value)} onKeyPress={(e) => handleKeyPress(e, 'videoSectionUrl', e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"/>
+                            </div>
+                             <div>
+                                <label className="block text-gray-700 text-sm font-bold mb-2">Título da Seção de Vídeo:</label>
+                                <input type="text" value={config.videoSectionTitle || ''} onChange={(e) => handleChange('videoSectionTitle', e.target.value)} onBlur={(e) => handleBlur('videoSectionTitle', e.target.value)} onKeyPress={(e) => handleKeyPress(e, 'videoSectionTitle', e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"/>
+                            </div>
+                             <div>
+                                <label className="block text-gray-700 text-sm font-bold mb-2">Subtítulo da Seção de Vídeo:</label>
+                                <input type="text" value={config.videoSectionSubtitle || ''} onChange={(e) => handleChange('videoSectionSubtitle', e.target.value)} onBlur={(e) => handleBlur('videoSectionSubtitle', e.target.value)} onKeyPress={(e) => handleKeyPress(e, 'videoSectionSubtitle', e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"/>
                             </div>
                         </div>
                         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 space-y-4">
                             <h3 className="text-2xl font-bold text-emerald-700">Configurações Gerais</h3>
                             <div>
                                 <label className="block text-gray-700 text-sm font-bold mb-2">Nome da Clínica:</label>
-                                <input 
-                                    type="text" 
-                                    value={config.clinicName || ''} 
-                                    onChange={(e) => handleChange('clinicName', e.target.value)} 
-                                    onBlur={(e) => handleBlur('clinicName', e.target.value)} 
-                                    onKeyPress={(e) => handleKeyPress(e, 'clinicName', e.target.value)} // Adicionado onKeyPress
-                                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
-                                />
+                                <input type="text" value={config.clinicName || ''} onChange={(e) => handleChange('clinicName', e.target.value)} onBlur={(e) => handleBlur('clinicName', e.target.value)} onKeyPress={(e) => handleKeyPress(e, 'clinicName', e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"/>
                             </div>
                             <div>
                                 <label className="block text-gray-700 text-sm font-bold mb-2">Imagem da Seção "Sobre":</label>
-                                <input 
-                                    type="text" 
-                                    value={config.aboutImage || ''} 
-                                    onChange={(e) => handleChange('aboutImage', e.target.value)} 
-                                    onBlur={(e) => handleBlur('aboutImage', e.target.value)} 
-                                    onKeyPress={(e) => handleKeyPress(e, 'aboutImage', e.target.value)} // Adicionado onKeyPress
-                                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
-                                />
+                                <input type="text" value={config.aboutImage || ''} onChange={(e) => handleChange('aboutImage', e.target.value)} onBlur={(e) => handleBlur('aboutImage', e.target.value)} onKeyPress={(e) => handleKeyPress(e, 'aboutImage', e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"/>
                             </div>
                         </div>
                     </div>
@@ -589,8 +575,7 @@
             const [userId, setUserId] = useState(null);
             const [isAuthReady, setIsAuthReady] = useState(false);
             const [siteConfig, setSiteConfig] = useState({
-                // URL do vídeo de fundo da seção principal
-                heroVideoUrl: "https://storage.googleapis.com/gweb-cloud-llm-assets/video_capa_clinica_medida_oficial.mp4", // Alterado para um URL público
+                heroVideoUrl: "imagens/Vídeo_Pronto_Clínica_Inteligente.mp4",
                 heroPosterUrl: "https://placehold.co/1920x1080/D0F0E0/000000?text=A+carregar+o+vídeo...",
                 heroTitle: "A Sua Clínica, Mais Inteligente.",
                 heroSubtitle: "Inovação e eficiência para a gestão médica.",
@@ -600,7 +585,7 @@
                 navLinks: [
                     { href: "#sobre", text: "Sobre" },
                     { href: "#servicos", text: "Serviços" },
-                    { href: "#app", text: "App" },
+                    { href: "#video", text: "Vídeo" },
                     { href: "#ia", text: "IA" },
                     { href: "#planos", text: "Planos" },
                     { href: "#exames", text: "Exames" },
@@ -608,8 +593,10 @@
                     { href: "#contato", text: "Contacto" },
                 ],
                 aboutImage: "https://placehold.co/1200x400/D0F0E0/000000?text=Médicos+a+interagir",
-                appImage1: "https://placehold.co/250x500/ADD8E6/000000?text=Ecrã+App+1",
-                appImage2: "https://placehold.co/250x500/87CEEB/000000?text=Ecrã+App+2",
+                // Configuração da seção de vídeo atualizada para usar o vídeo local
+                videoSectionUrl: "imagens/Vídeo_Pronto_Clínica_Inteligente.mp4",
+                videoSectionTitle: "Conheça a Nossa Estrutura",
+                videoSectionSubtitle: "Um tour virtual pelas nossas instalações modernas e acolhedoras."
             });
 
             useEffect(() => {
@@ -635,7 +622,6 @@
                             } else {
                                 await signInAnonymously(auth);
                             }
-                            // Isto garante que o userId é definido após o início de sessão anónimo ou com token personalizado
                             setUserId(auth.currentUser?.uid);
                         } catch (error) {
                             console.error("Erro na autenticação:", error);
@@ -655,7 +641,6 @@
                     if (docSnap.exists()) {
                         setSiteConfig(prevConfig => ({ ...prevConfig, ...docSnap.data() }));
                     } else {
-                        // Se nenhuma configuração for encontrada no Firestore, cria uma com valores padrão
                         setDoc(configDocRef, siteConfig);
                     }
                 }, (error) => {
@@ -669,7 +654,6 @@
                 if (!db) return;
                 const configDocRef = doc(db, `artifacts/${appId}/public/data/siteConfigurations/mainDoc`);
                 try {
-                    // Usa setDoc com merge para criar ou atualizar o documento
                     await setDoc(configDocRef, { [key]: value }, { merge: true });
                 } catch (e) {
                     console.error("Erro ao atualizar configuração:", e);
@@ -727,7 +711,7 @@
                                 </div>
                             </div>
                         </section>
-                        <InteractiveAppSection siteConfig={siteConfig} />
+                        <VideoSection siteConfig={siteConfig} />
                         <AISection />
                         <SubscriptionPlans />
                         <PatientExamsSection userId={userId} />
