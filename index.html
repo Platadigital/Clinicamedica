@@ -487,8 +487,12 @@
                 setConfig(prev => ({ ...prev, [key]: value }));
             };
 
-            const handleBlur = (key, value) => {
-                updateSiteConfig(key, value);
+            // Função para lidar com o pressionar de tecla, salvando ao pressionar 'Enter'
+            const handleKeyPress = (e, key, value) => {
+                if (e.key === 'Enter') {
+                    updateSiteConfig(key, value);
+                    e.target.blur(); // Remove o foco do input após salvar
+                }
             };
 
             return (
@@ -500,22 +504,50 @@
                             <h3 className="text-2xl font-bold text-emerald-700">Seção Principal (Hero)</h3>
                             <div>
                                 <label className="block text-gray-700 text-sm font-bold mb-2">URL do Vídeo:</label>
-                                <input type="text" value={config.heroVideoUrl || ''} onChange={(e) => handleChange('heroVideoUrl', e.target.value)} onBlur={(e) => handleBlur('heroVideoUrl', e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"/>
+                                <input 
+                                    type="text" 
+                                    value={config.heroVideoUrl || ''} 
+                                    onChange={(e) => handleChange('heroVideoUrl', e.target.value)} 
+                                    onBlur={(e) => handleBlur('heroVideoUrl', e.target.value)} 
+                                    onKeyPress={(e) => handleKeyPress(e, 'heroVideoUrl', e.target.value)} // Adicionado onKeyPress
+                                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
+                                />
                             </div>
                             <div>
                                 <label className="block text-gray-700 text-sm font-bold mb-2">Título Principal:</label>
-                                <input type="text" value={config.heroTitle || ''} onChange={(e) => handleChange('heroTitle', e.target.value)} onBlur={(e) => handleBlur('heroTitle', e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"/>
+                                <input 
+                                    type="text" 
+                                    value={config.heroTitle || ''} 
+                                    onChange={(e) => handleChange('heroTitle', e.target.value)} 
+                                    onBlur={(e) => handleBlur('heroTitle', e.target.value)} 
+                                    onKeyPress={(e) => handleKeyPress(e, 'heroTitle', e.target.value)} // Adicionado onKeyPress
+                                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
+                                />
                             </div>
                         </div>
                         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 space-y-4">
                             <h3 className="text-2xl font-bold text-emerald-700">Configurações Gerais</h3>
                             <div>
                                 <label className="block text-gray-700 text-sm font-bold mb-2">Nome da Clínica:</label>
-                                <input type="text" value={config.clinicName || ''} onChange={(e) => handleChange('clinicName', e.target.value)} onBlur={(e) => handleBlur('clinicName', e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"/>
+                                <input 
+                                    type="text" 
+                                    value={config.clinicName || ''} 
+                                    onChange={(e) => handleChange('clinicName', e.target.value)} 
+                                    onBlur={(e) => handleBlur('clinicName', e.target.value)} 
+                                    onKeyPress={(e) => handleKeyPress(e, 'clinicName', e.target.value)} // Adicionado onKeyPress
+                                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
+                                />
                             </div>
                             <div>
                                 <label className="block text-gray-700 text-sm font-bold mb-2">Imagem da Seção "Sobre":</label>
-                                <input type="text" value={config.aboutImage || ''} onChange={(e) => handleChange('aboutImage', e.target.value)} onBlur={(e) => handleBlur('aboutImage', e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"/>
+                                <input 
+                                    type="text" 
+                                    value={config.aboutImage || ''} 
+                                    onChange={(e) => handleChange('aboutImage', e.target.value)} 
+                                    onBlur={(e) => handleBlur('aboutImage', e.target.value)} 
+                                    onKeyPress={(e) => handleKeyPress(e, 'aboutImage', e.target.value)} // Adicionado onKeyPress
+                                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
+                                />
                             </div>
                         </div>
                     </div>
@@ -557,7 +589,7 @@
             const [isAuthReady, setIsAuthReady] = useState(false);
             const [siteConfig, setSiteConfig] = useState({
                 // URL do vídeo de fundo da seção principal
-                heroVideoUrl: "imagens/video capa clinica medida oficial.mp4",
+                heroVideoUrl: "https://storage.googleapis.com/gweb-cloud-llm-assets/video_capa_clinica_medida_oficial.mp4", // Alterado para um URL público
                 heroPosterUrl: "https://placehold.co/1920x1080/D0F0E0/000000?text=A+carregar+o+vídeo...",
                 heroTitle: "A Sua Clínica, Mais Inteligente.",
                 heroSubtitle: "Inovação e eficiência para a gestão médica.",
